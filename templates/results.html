@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Scheduling Results</title>
+</head>
+<body>
+    <h1>Scheduling Results - {{ method.capitalize() }}</h1>
+    <table>
+        <tr>
+            <th>Subject</th>
+            <th>Time</th>
+            <th>Room</th>
+        </tr>
+        {% for subject, details in schedule.items() %}
+        <tr>
+            <td>{{ subject }}</td>
+            <td>{{ details.time }}</td>
+            <td>{{ details.room }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <br>
+    <a href="/">Go Back</a>
+</body>
+</html>

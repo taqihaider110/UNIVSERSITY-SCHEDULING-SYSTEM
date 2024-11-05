@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>University Scheduling System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h2>University Course Scheduling System</h2>
+    <h3>Enter Course Data Manually or Upload an Excel File</h3>
+
+    <!-- Manual Data Entry Form -->
+    <form action="/" method="POST" enctype="multipart/form-data">
+        <h4>Manual Course Data Entry</h4>
+        <label for="course_code">Course Code:</label>
+        <input type="text" name="course_code" id="course_code" required><br>
+        
+        <label for="course_title">Course Title:</label>
+        <input type="text" name="course_title" id="course_title" required><br>
+        
+        <label for="abbreviation">Abbreviation:</label>
+        <input type="text" name="abbreviation" id="abbreviation" required><br>
+        
+        <label for="teacher_name">Course Teacher Name:</label>
+        <input type="text" name="teacher_name" id="teacher_name" required><br>
+        
+        <label for="section_a_schedule">Section-A Schedule (comma-separated):</label>
+        <input type="text" name="section_a_schedule" id="section_a_schedule" required><br>
+        
+        <label for="section_b_schedule">Section-B Schedule (comma-separated):</label>
+        <input type="text" name="section_b_schedule" id="section_b_schedule" required><br>
+        
+        <label for="section_a_room">Section-A Room:</label>
+        <input type="text" name="section_a_room" id="section_a_room" required><br>
+        
+        <label for="section_b_room">Section-B Room:</label>
+        <input type="text" name="section_b_room" id="section_b_room" required><br>
+        
+        <button type="submit" name="manual_entry">Submit Manual Data</button>
+    </form>
+
+    <hr>
+
+    <!-- Excel File Upload Form -->
+    <form action="/" method="POST" enctype="multipart/form-data">
+        <h4>Upload Excel File</h4>
+        <label for="file">Choose Excel File:</label>
+        <input type="file" name="file" id="file" required><br>
+        <button type="submit">Upload File</button>
+    </form>
+
+    <hr>
+
+    <!-- Display Manual Data -->
+    {% if manual_data %}
+        <h3>Manually Entered Data</h3>
+        <table border="1">
+            <tr>
+                <th>Course Code</th>
+                <td>{{ manual_data['Course Code'] }}</td>
+            </tr>
+            <tr>
+                <th>Course Title</th>
+                <td>{{ manual_data['Course Title'] }}</td>
+            </tr>
+            <tr>
+                <th>Abbreviation</th>
+                <td>{{ manual_data['Abbreviation'] }}</td>
+            </tr>
+            <tr>
+                <th>Course Teacher Name</th>
+                <td>{{ manual_data['Course Teacher Name'] }}</td>
+            </tr>
+            <tr>
+                <th>Section-A Schedule</th>
+                <td>{{ manual_data['Section-A Schedule'] }}</td>
+            </tr>
+            <tr>
+                <th>Section-B Schedule</th>
+                <td>{{ manual_data['Section-B Schedule'] }}</td>
+            </tr>
+            <tr>
+                <th>Section-A Room</th>
+                <td>{{ manual_data['Section-A Room'] }}</td>
+            </tr>
+            <tr>
+                <th>Section-B Room</th>
+                <td>{{ manual_data['Section-B Room'] }}</td>
+            </tr>
+        </table>
+    {% endif %}
+
+    <!-- Display Excel Data -->
+    {% if excel_data %}
+        <h3>Uploaded Excel Data</h3>
+        <div>
+            {{ excel_data|safe }}
+        </div>
+    {% endif %}
+
+    <!-- Display Greedy Scheduling Result -->
+    {% if greedy_result %}
+        <h3>Greedy Scheduling Result</h3>
+        <div>
+            {{ greedy_result|safe }}
+        </div>
+    {% endif %}
+
+    <!-- Display Backtracking Scheduling Result -->
+    {% if backtracking_result %}
+        <h3>Backtracking Scheduling Result</h3>
+        <div>
+            {{ backtracking_result|safe }}
+        </div>
+    {% endif %}
+</body>
+</html>
