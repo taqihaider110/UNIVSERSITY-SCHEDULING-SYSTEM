@@ -1,0 +1,35 @@
+{% extends "layout.html" %}
+{% block content %}
+<h1 class="text-center">Add New Course</h1>
+<form method="post" class="p-4 border rounded bg-light">
+    <div class="form-group">
+        <label for="teacher_name">Teacher Name</label>
+        <input type="text" class="form-control" id="teacher_name" name="teacher_name" required>
+    </div>
+    <div class="form-group">
+        <label for="course_code">Course Code</label>
+        <input type="text" class="form-control" id="course_code" name="course_code" required>
+    </div>
+    <div class="form-group">
+        <label for="course_title">Course Title</label>
+        <input type="text" class="form-control" id="course_title" name="course_title" required>
+    </div>
+    <div class="form-group">
+        <label for="day_of_week">Day of Week</label>
+        <input type="text" class="form-control" id="day_of_week" name="day_of_week" required>
+    </div>
+    <div class="form-group">
+        <label for="class_start_time">Class Start Time</label>
+        <input type="time" class="form-control" id="class_start_time" name="class_start_time" required>
+    </div>
+    <div class="form-group">
+        <label for="class_end_time">Class End Time</label>
+        <input type="time" class="form-control" id="class_end_time" name="class_end_time" required>
+    </div>
+    <div class="form-group">
+        <label for="room">Room</label>
+        <input type="number" class="form-control" id="room" name="room" required>
+    </div>
+    <button type="submit" class="btn btn-success">Add Course</button>
+</form>
+{% endblock %}

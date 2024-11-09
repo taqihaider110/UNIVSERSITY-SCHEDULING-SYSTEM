@@ -1,225 +1,118 @@
-import os
-from flask import Flask, render_template, request
-import pandas as pd
+from flask import Flask, render_template, request, redirect, url_for, flash
+import sqlite3
 
 app = Flask(__name__)
+app.secret_key = 'your_secret_key'  # Required for flash messages
 
-# Folder to store uploaded files
-UPLOAD_FOLDER = 'uploads'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# SQLite Database connection function with context manager
+def get_db_connection():
+    try:
+        conn = sqlite3.connect('university_schedule.db')  # Connects to the SQLite database file
+        conn.row_factory = sqlite3.Row  # Allows rows to behave like dictionaries
+        return conn
+    except sqlite3.Error as e:
+        print(f"Database connection error: {e}")
+        return None
 
-# Allowed file extensions
-ALLOWED_EXTENSIONS = {'xlsx', 'xls'}
-
-# Function to check if the file extension is allowed
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-# Greedy Algorithm Code with Enhancements
-def greedy_schedule(courses):
-    teacher_schedule = {}
-    room_schedule = {}
-    schedule = []
-
-    # Sort courses by their priority (e.g., number of sections, room availability)
-    courses = sorted(courses, key=lambda x: (len(x['section_a_schedule']) + len(x['section_b_schedule'])), reverse=True)  # Prioritize courses with more sections
-
-    for course in courses:
-        assigned = False
-        for time_slot in course['time_slots']:
-            # Check for teacher clash
-            if course['teacher_name'] not in teacher_schedule or time_slot not in teacher_schedule[course['teacher_name']]:
-                # Check for room clash in Section-A
-                if course['section_a_room'] not in room_schedule or time_slot not in room_schedule[course['section_a_room']]:
-                    # Check for room clash in Section-B
-                    if course['section_b_room'] not in room_schedule or time_slot not in room_schedule[course['section_b_room']]:
-                        # Assign course to this timeslot and room
-                        teacher_schedule.setdefault(course['teacher_name'], []).append(time_slot)
-                        room_schedule.setdefault(course['section_a_room'], []).append(time_slot)
-                        room_schedule.setdefault(course['section_b_room'], []).append(time_slot)
-                        schedule.append({
-                            'course_code': course['course_code'],
-                            'time_slot': time_slot,
-                            'teacher': course['teacher_name'],
-                            'section_a_room': course['section_a_room'],
-                            'section_b_room': course['section_b_room']
-                        })
-                        assigned = True
-                        break
-        if not assigned:
-            print(f"Course {course['course_code']} could not be scheduled.")
-    return schedule
-
-# Backtracking Algorithm Code with Enhanced Conflict Resolution
-def is_safe(course, time_slot, teacher_schedule, room_schedule):
-    # Check if the teacher is free at this time slot
-    if course['teacher_name'] in teacher_schedule and time_slot in teacher_schedule[course['teacher_name']]:
-        return False
-
-    # Check if Section-A room is free at this time slot
-    if course['section_a_room'] in room_schedule and time_slot in room_schedule[course['section_a_room']]:
-        return False
-
-    # Check if Section-B room is free at this time slot
-    if course['section_b_room'] in room_schedule and time_slot in room_schedule[course['section_b_room']]:
-        return False
-
-    return True
-
-def backtrack_schedule(courses, teacher_schedule, room_schedule, schedule, idx):
-    if idx == len(courses):
-        return True  # All courses scheduled successfully
-
-    course = courses[idx]
-    for time_slot in course['time_slots']:
-        if is_safe(course, time_slot, teacher_schedule, room_schedule):
-            # Assign course to this time slot
-            teacher_schedule.setdefault(course['teacher_name'], []).append(time_slot)
-            room_schedule.setdefault(course['section_a_room'], []).append(time_slot)
-            room_schedule.setdefault(course['section_b_room'], []).append(time_slot)
-
-            # Add to schedule
-            schedule.append({
-                'course_code': course['course_code'],
-                'time_slot': time_slot,
-                'teacher': course['teacher_name'],
-                'section_a_room': course['section_a_room'],
-                'section_b_room': course['section_b_room']
-            })
-
-            # Recur for next course
-            if backtrack_schedule(courses, teacher_schedule, room_schedule, schedule, idx + 1):
-                return True
-
-            # Backtrack
-            teacher_schedule[course['teacher_name']].remove(time_slot)
-            room_schedule[course['section_a_room']].remove(time_slot)
-            room_schedule[course['section_b_room']].remove(time_slot)
-            schedule.pop()
-
-    return False  # No solution found for this course
-
-def solve_backtracking(courses):
-    teacher_schedule = {}
-    room_schedule = {}
-    schedule = []
-    if backtrack_schedule(courses, teacher_schedule, room_schedule, schedule, 0):
-        return schedule
-    else:
-        return "No valid schedule found."
-
-# Function to detect scheduling clashes
-def detect_clashes(courses):
-    clashes = []
-    teacher_schedule = {}
-    room_schedule = {}
-
-    for course in courses:
-        # Check teacher clash
-        for time_slot in course['time_slots']:
-            if course['teacher_name'] in teacher_schedule and time_slot in teacher_schedule[course['teacher_name']]:
-                clashes.append(f"Clash: Teacher '{course['teacher_name']}' assigned to multiple courses at the same time ({time_slot}).")
-            else:
-                teacher_schedule.setdefault(course['teacher_name'], []).append(time_slot)
-
-        # Check room clash for Section A
-        for time_slot in course['section_a_schedule']:
-            if course['section_a_room'] in room_schedule and time_slot in room_schedule[course['section_a_room']]:
-                clashes.append(f"Clash: Room '{course['section_a_room']}' is booked for multiple courses at the same time ({time_slot}).")
-            else:
-                room_schedule.setdefault(course['section_a_room'], []).append(time_slot)
-
-        # Check room clash for Section B
-        for time_slot in course['section_b_schedule']:
-            if course['section_b_room'] in room_schedule and time_slot in room_schedule[course['section_b_room']]:
-                clashes.append(f"Clash: Room '{course['section_b_room']}' is booked for multiple courses at the same time ({time_slot}).")
-            else:
-                room_schedule.setdefault(course['section_b_room'], []).append(time_slot)
-
-    return clashes
-
-@app.route("/", methods=["GET", "POST"])
+# Route to display the course schedule
+@app.route('/')
 def index():
-    manual_data = None
-    excel_data = None
-    clash_results = []
-    greedy_schedule_results = []
-    backtracking_schedule_results = []
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM course_schedule")
+            courses = cursor.fetchall()
+        return render_template('index.html', courses=courses)
+    except sqlite3.Error as e:
+        flash(f"Error fetching course data: {e}", "danger")
+        return render_template('index.html', courses=[])
 
-    if request.method == "POST":
-        if 'manual_entry' in request.form:
-            course_code = request.form['course_code']
-            course_title = request.form['course_title']
-            abbreviation = request.form['abbreviation']
-            teacher_name = request.form['teacher_name']
-            section_a_schedule = request.form['section_a_schedule'].split(',')
-            section_b_schedule = request.form['section_b_schedule'].split(',')
-            section_a_room = request.form['section_a_room']
-            section_b_room = request.form['section_b_room']
+# Route to add a new course
+@app.route('/add', methods=['GET', 'POST'])
+def add_course():
+    if request.method == 'POST':
+        teacher_name = request.form['teacher_name']
+        course_code = request.form['course_code']
+        course_title = request.form['course_title']
+        day_of_week = request.form['day_of_week']
+        class_start_time = request.form['class_start_time']
+        class_end_time = request.form['class_end_time']
+        room = request.form['room']
+
+        if not (teacher_name and course_code and course_title and day_of_week and class_start_time and class_end_time and room):
+            flash("All fields are required.", "warning")
+            return render_template('add_course.html')
+
+        try:
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO course_schedule 
+                    (teacher_name, course_code, course_title, day_of_week, class_start_time, class_end_time, room) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    (teacher_name, course_code, course_title, day_of_week, class_start_time, class_end_time, room))
+                conn.commit()
+                flash("Course added successfully.", "success")
+            return redirect(url_for('index'))
+        except sqlite3.Error as e:
+            flash(f"Error adding course: {e}", "danger")
+
+    return render_template('add_course.html')
+
+# Route to edit a course
+@app.route('/edit/<int:id>', methods=['GET', 'POST'])
+def edit_course(id):
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM course_schedule WHERE id = ?", (id,))
+            course = cursor.fetchone()
+
+            if not course:
+                flash("Course not found.", "danger")
+                return redirect(url_for('index'))
+
+            if request.method == 'POST':
+                teacher_name = request.form['teacher_name']
+                course_code = request.form['course_code']
+                course_title = request.form['course_title']
+                day_of_week = request.form['day_of_week']
+                class_start_time = request.form['class_start_time']
+                class_end_time = request.form['class_end_time']
+                room = request.form['room']
+
+                if not (teacher_name and course_code and course_title and day_of_week and class_start_time and class_end_time and room):
+                    flash("All fields are required.", "warning")
+                    return render_template('edit_course.html', course=course)
+
+                cursor.execute("""
+                    UPDATE course_schedule 
+                    SET teacher_name = ?, course_code = ?, course_title = ?, day_of_week = ?, 
+                        class_start_time = ?, class_end_time = ?, room = ? 
+                    WHERE id = ?""",
+                    (teacher_name, course_code, course_title, day_of_week, class_start_time, class_end_time, room, id))
+                conn.commit()
+                flash("Course updated successfully.", "success")
+                return redirect(url_for('index'))
             
-            manual_data = {
-                "Course Code": course_code,
-                "Course Title": course_title,
-                "Abbreviation": abbreviation,
-                "Course Teacher Name": teacher_name,
-                "Section-A Schedule": section_a_schedule,
-                "Section-B Schedule": section_b_schedule,
-                "Section-A Room": section_a_room,
-                "Section-B Room": section_b_room
-            }
+            return render_template('edit_course.html', course=course)
+    except sqlite3.Error as e:
+        flash(f"Error editing course: {e}", "danger")
+        return redirect(url_for('index'))
 
-            # Detect clashes using greedy and backtracking
-            clashes = detect_clashes([manual_data])
-            if clashes:
-                clash_results = clashes
-            else:
-                clash_results = ["No clashes detected for manually entered data."]
+# Route to delete a course
+@app.route('/delete/<int:id>')
+def delete_course(id):
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM course_schedule WHERE id = ?", (id,))
+            conn.commit()
+            flash("Course deleted successfully.", "success")
+    except sqlite3.Error as e:
+        flash(f"Error deleting course: {e}", "danger")
+    
+    return redirect(url_for('index'))
 
-            # Greedy schedule
-            greedy_schedule_results = greedy_schedule([manual_data])
-
-            # Backtracking schedule
-            backtracking_schedule_results = solve_backtracking([manual_data])
-
-        if 'file' in request.files:
-            file = request.files['file']
-            if file and allowed_file(file.filename):
-                filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-                file.save(filename)
-
-                df = pd.read_excel(filename)
-                courses = []
-                for _, row in df.iterrows():
-                    courses.append({
-                        'course_code': row['Course Code'],
-                        'course_title': row['Course Title'],
-                        'abbreviation': row['Abbreviation'],
-                        'teacher_name': row['Course Teacher Name'],
-                        'time_slots': row['Section-A Schedule'].split(','),
-                        'section_a_schedule': row['Section-A Schedule'].split(','),
-                        'section_b_schedule': row['Section-B Schedule'].split(','),
-                        'section_a_room': row['Section-A Room'],
-                        'section_b_room': row['Section-B Room']
-                    })
-
-                # Detect clashes for uploaded file data
-                clashes = detect_clashes(courses)
-                if clashes:
-                    clash_results = clashes
-                else:
-                    clash_results = ["No clashes detected for uploaded data."]
-
-                # Greedy schedule
-                greedy_schedule_results = greedy_schedule(courses)
-
-                # Backtracking schedule
-                backtracking_schedule_results = solve_backtracking(courses)
-
-                excel_data = df.to_html(classes='data', header="true", index=False)
-
-    return render_template("index.html", manual_data=manual_data, excel_data=excel_data, 
-                           clashes=clash_results, greedy_schedule=greedy_schedule_results, 
-                           backtracking_schedule=backtracking_schedule_results)
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(debug=True)

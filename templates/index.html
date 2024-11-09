@@ -1,188 +1,38 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>University Scheduling System</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-
-<body>
-    <header>
-        <h2>University Course Scheduling System</h2>
-        <p>Enter Course Data Manually or Upload an Excel File</p>
-    </header>
-
-    <section>
-        <!-- Manual Data Entry Form -->
-        <form action="/" method="POST" enctype="multipart/form-data">
-            <h4>Manual Course Data Entry</h4>
-            <div class="form-group">
-                <label for="course_code">Course Code:</label>
-                <input type="text" name="course_code" id="course_code" required><br>
-            </div>
-            <div class="form-group">
-                <label for="course_title">Course Title:</label>
-                <input type="text" name="course_title" id="course_title" required><br>
-            </div>
-            <div class="form-group">
-                <label for="abbreviation">Abbreviation:</label>
-                <input type="text" name="abbreviation" id="abbreviation" required><br>
-            </div>
-            <div class="form-group">
-                <label for="teacher_name">Course Teacher Name:</label>
-                <input type="text" name="teacher_name" id="teacher_name" required><br>
-            </div>
-            <div class="form-group">
-                <label for="section_a_schedule">Section-A Schedule (comma-separated):</label>
-                <input type="text" name="section_a_schedule" id="section_a_schedule" required><br>
-            </div>
-            <div class="form-group">
-                <label for="section_b_schedule">Section-B Schedule (comma-separated):</label>
-                <input type="text" name="section_b_schedule" id="section_b_schedule" required><br>
-            </div>
-            <div class="form-group">
-                <label for="section_a_room">Section-A Room:</label>
-                <input type="text" name="section_a_room" id="section_a_room" required><br>
-            </div>
-            <div class="form-group">
-                <label for="section_b_room">Section-B Room:</label>
-                <input type="text" name="section_b_room" id="section_b_room" required><br>
-            </div>
-            <button type="submit" name="manual_entry">Submit Manual Data</button>
-        </form>
-    </section>
-
-    <hr>
-
-    <section>
-        <!-- Excel File Upload Form -->
-        <form action="/" method="POST" enctype="multipart/form-data">
-            <h4>Upload Excel File</h4>
-            <div class="form-group">
-                <label for="file">Choose Excel File:</label>
-                <input type="file" name="file" id="file" required><br>
-            </div>
-            <button type="submit">Upload File</button>
-        </form>
-    </section>
-
-    <hr>
-
-    <section>
-        <!-- Display Manual Data -->
-        {% if manual_data %}
-        <h3>Manually Entered Data</h3>
-        <table border="1" class="data-table">
-            <tr>
-                <th>Course Code</th>
-                <td>{{ manual_data['Course Code'] }}</td>
-            </tr>
-            <tr>
-                <th>Course Title</th>
-                <td>{{ manual_data['Course Title'] }}</td>
-            </tr>
-            <tr>
-                <th>Abbreviation</th>
-                <td>{{ manual_data['Abbreviation'] }}</td>
-            </tr>
-            <tr>
-                <th>Course Teacher Name</th>
-                <td>{{ manual_data['Course Teacher Name'] }}</td>
-            </tr>
-            <tr>
-                <th>Section-A Schedule</th>
-                <td>{{ manual_data['Section-A Schedule'] }}</td>
-            </tr>
-            <tr>
-                <th>Section-B Schedule</th>
-                <td>{{ manual_data['Section-B Schedule'] }}</td>
-            </tr>
-            <tr>
-                <th>Section-A Room</th>
-                <td>{{ manual_data['Section-A Room'] }}</td>
-            </tr>
-            <tr>
-                <th>Section-B Room</th>
-                <td>{{ manual_data['Section-B Room'] }}</td>
-            </tr>
-        </table>
-        {% endif %}
-    </section>
-
-    <section>
-        <!-- Display Excel Data -->
-        {% if excel_data %}
-        <h3>Uploaded Excel Data</h3>
-        <div class="excel-data">
-            {{ excel_data|safe }}
-        </div>
-        {% endif %}
-    </section>
-
-    <section>
-        <!-- Display Clashes -->
-        {% if clashes %}
-        <h3>Clashes Detected</h3>
-        <ul>
-            {% for clash in clashes %}
-            <li>{{ clash }}</li>
-            {% endfor %}
-        </ul>
-        {% endif %}
-    </section>
-
-    <section>
-        <!-- Greedy Algorithm Schedule -->
-        {% if greedy_schedule %}
-        <h3>Greedy Schedule</h3>
-        <table border="1" class="schedule-table">
-            <tr>
-                <th>Course Code</th>
-                <th>Time Slot</th>
-                <th>Teacher</th>
-                <th>Section-A Room</th>
-                <th>Section-B Room</th>
-            </tr>
-            {% for entry in greedy_schedule %}
-            <tr>
-                <td>{{ entry['course_code'] }}</td>
-                <td>{{ entry['time_slot'] }}</td>
-                <td>{{ entry['teacher'] }}</td>
-                <td>{{ entry['section_a_room'] }}</td>
-                <td>{{ entry['section_b_room'] }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-        {% endif %}
-    </section>
-
-    <section>
-        <!-- Backtracking Algorithm Schedule -->
-        {% if backtracking_schedule %}
-        <h3>Backtracking Schedule</h3>
-        <table border="1" class="schedule-table">
-            <tr>
-                <th>Course Code</th>
-                <th>Time Slot</th>
-                <th>Teacher</th>
-                <th>Section-A Room</th>
-                <th>Section-B Room</th>
-            </tr>
-            {% for entry in backtracking_schedule %}
-            <tr>
-                <td>{{ entry['course_code'] }}</td>
-                <td>{{ entry['time_slot'] }}</td>
-                <td>{{ entry['teacher'] }}</td>
-                <td>{{ entry['section_a_room'] }}</td>
-                <td>{{ entry['section_b_room'] }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-        {% endif %}
-    </section>
-
-</body>
-
-</html>
+{% extends "layout.html" %}
+{% block content %}
+<h1 class="text-center">Course Schedule</h1>
+<a href="{{ url_for('add_course') }}" class="btn btn-primary mb-3">Add New Course</a>
+<table class="table table-bordered table-striped">
+    <thead class="thead-dark">
+        <tr>
+            <th>ID</th>
+            <th>Teacher Name</th>
+            <th>Course Code</th>
+            <th>Course Title</th>
+            <th>Day of Week</th>
+            <th>Class Start Time</th>
+            <th>Class End Time</th>
+            <th>Room</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for course in courses %}
+        <tr>
+            <td>{{ course['id'] }}</td>
+            <td>{{ course['teacher_name'] }}</td>
+            <td>{{ course['course_code'] }}</td>
+            <td>{{ course['course_title'] }}</td>
+            <td>{{ course['day_of_week'] }}</td>
+            <td>{{ course['class_start_time'] }}</td>
+            <td>{{ course['class_end_time'] }}</td>
+            <td>{{ course['room'] }}</td>
+            <td>
+                <a href="{{ url_for('edit_course', id=course['id']) }}" class="btn btn-warning btn-sm">Edit</a>
+                <a href="{{ url_for('delete_course', id=course['id']) }}" class="btn btn-danger btn-sm">Delete</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
