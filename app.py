@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 import sqlite3
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Required for flash messages
@@ -15,14 +16,36 @@ def get_db_connection():
         return None
 
 # Route to display the course schedule
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
     try:
+        # Retrieve filter parameters from the request
+        teacher_name = request.args.get('teacher_name', '')
+        course_code = request.args.get('course_code', '')
+        day_of_week = request.args.get('day_of_week', '')
+
+        # Build the query dynamically based on filters
+        query = "SELECT * FROM course_schedule WHERE 1=1"
+        params = []
+
+        if teacher_name:
+            query += " AND teacher_name LIKE ?"
+            params.append(f"%{teacher_name}%")
+        if course_code:
+            query += " AND course_code LIKE ?"
+            params.append(f"%{course_code}%")
+        if day_of_week:
+            query += " AND day_of_week LIKE ?"
+            params.append(f"%{day_of_week}%")
+
+        # Fetch the courses from the database based on the filter
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM course_schedule")
+            cursor.execute(query, tuple(params))
             courses = cursor.fetchall()
+
         return render_template('index.html', courses=courses)
+
     except sqlite3.Error as e:
         flash(f"Error fetching course data: {e}", "danger")
         return render_template('index.html', courses=[])
@@ -31,6 +54,7 @@ def index():
 @app.route('/add', methods=['GET', 'POST'])
 def add_course():
     if request.method == 'POST':
+        # Get form data
         teacher_name = request.form['teacher_name']
         course_code = request.form['course_code']
         course_title = request.form['course_title']
@@ -39,14 +63,26 @@ def add_course():
         class_end_time = request.form['class_end_time']
         room = request.form['room']
 
-        if not (teacher_name and course_code and course_title and day_of_week and class_start_time and class_end_time and room):
+        # Validate form fields
+        if not all([teacher_name, course_code, course_title, day_of_week, class_start_time, class_end_time, room]):
             flash("All fields are required.", "warning")
+            return render_template('add_course.html')
+
+        # Validate start time and end time
+        try:
+            start_time = datetime.strptime(class_start_time, '%H:%M')
+            end_time = datetime.strptime(class_end_time, '%H:%M')
+            if start_time >= end_time:
+                flash("End time must be after start time.", "warning")
+                return render_template('add_course.html')
+        except ValueError:
+            flash("Invalid time format. Please use HH:MM format.", "warning")
             return render_template('add_course.html')
 
         try:
             with get_db_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("""
+                cursor.execute(""" 
                     INSERT INTO course_schedule 
                     (teacher_name, course_code, course_title, day_of_week, class_start_time, class_end_time, room) 
                     VALUES (?, ?, ?, ?, ?, ?, ?)""",
@@ -56,7 +92,7 @@ def add_course():
             return redirect(url_for('index'))
         except sqlite3.Error as e:
             flash(f"Error adding course: {e}", "danger")
-
+    
     return render_template('add_course.html')
 
 # Route to edit a course
@@ -73,6 +109,7 @@ def edit_course(id):
                 return redirect(url_for('index'))
 
             if request.method == 'POST':
+                # Get updated form data
                 teacher_name = request.form['teacher_name']
                 course_code = request.form['course_code']
                 course_title = request.form['course_title']
@@ -81,11 +118,23 @@ def edit_course(id):
                 class_end_time = request.form['class_end_time']
                 room = request.form['room']
 
-                if not (teacher_name and course_code and course_title and day_of_week and class_start_time and class_end_time and room):
+                # Validate form fields
+                if not all([teacher_name, course_code, course_title, day_of_week, class_start_time, class_end_time, room]):
                     flash("All fields are required.", "warning")
                     return render_template('edit_course.html', course=course)
 
-                cursor.execute("""
+                # Validate start time and end time
+                try:
+                    start_time = datetime.strptime(class_start_time, '%H:%M')
+                    end_time = datetime.strptime(class_end_time, '%H:%M')
+                    if start_time >= end_time:
+                        flash("End time must be after start time.", "warning")
+                        return render_template('edit_course.html', course=course)
+                except ValueError:
+                    flash("Invalid time format. Please use HH:MM format.", "warning")
+                    return render_template('edit_course.html', course=course)
+
+                cursor.execute(""" 
                     UPDATE course_schedule 
                     SET teacher_name = ?, course_code = ?, course_title = ?, day_of_week = ?, 
                         class_start_time = ?, class_end_time = ?, room = ? 
@@ -94,7 +143,7 @@ def edit_course(id):
                 conn.commit()
                 flash("Course updated successfully.", "success")
                 return redirect(url_for('index'))
-            
+
             return render_template('edit_course.html', course=course)
     except sqlite3.Error as e:
         flash(f"Error editing course: {e}", "danger")

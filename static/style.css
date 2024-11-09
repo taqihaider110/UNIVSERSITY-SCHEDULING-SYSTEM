@@ -28,7 +28,7 @@ table, th, td {
 
 th, td {
     padding: 12px;
-    text-align: center;
+    text-align: left;  /* Improved alignment for readability */
 }
 
 th {
@@ -87,7 +87,7 @@ input[type="submit"], button {
     border-radius: 4px;
     cursor: pointer;
     font-size: 1.2rem;
-    transition: background-color 0.3s;
+    transition: background-color 0.3s ease-in-out;  /* Smoother transition */
 }
 
 input[type="submit"]:hover, button:hover {
