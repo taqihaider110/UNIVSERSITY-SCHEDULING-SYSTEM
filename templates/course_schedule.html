@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Schedule</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Course Schedule</h1>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="list-unstyled">
+                    {% for category, message in messages %}
+                        <li class="alert alert-{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('select_courses') }}">
+            <h4>Select Your Courses</h4>
+            <div class="form-group">
+                <label for="courses">Available Courses</label>
+                <select name="courses" id="courses" class="form-control" multiple size="10">
+                    {% for course in courses %}
+                        <option value="{{ course.id }}" 
+                            {% if course.id in selected_courses_ids %}selected{% endif %}>
+                            {{ course.course_title }} ({{ course.teacher_name }}) - {{ course.day_of_week }}
+                            {{ course.class_start_time }} - {{ course.class_end_time }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+        
+
+        <div class="mt-5">
+            <h4>Your Selected Courses</h4>
+            {% if selected_courses %}
+                <ul class="list-group">
+                    {% for course in selected_courses %}
+                        <li class="list-group-item">
+                            <strong>{{ course.course_title }}</strong> <br>
+                            Teacher: {{ course.teacher_name }} <br>
+                            Day: {{ course.day_of_week }} <br>
+                            Time: {{ course.class_start_time }} - {{ course.class_end_time }} <br>
+                            Room: {{ course.room }} <br>
+                            <!-- Delete Button -->
+                            <form action="{{ url_for('delete_course', id=course.id) }}" method="POST">
+                                <button type="submit" class="btn btn-danger">Delete</button>
+                            </form>
+                            
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>No courses selected yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.1/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

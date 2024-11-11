@@ -3,58 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add New Course</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css">
+    <title>Add Course</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
 <body>
+    <div class="container">
+        <h1>Add a New Course</h1>
 
-<div class="container">
-    <h1 class="my-4">Add New Course</h1>
-
-    <!-- Display flash messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-            <div class="alert alert-{{ messages[0][0] }}">
-                {{ messages[0][1] }}
-            </div>
+        <div class="alert alert-dismissible fade show" role="alert">
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
         {% endif %}
-    {% endwith %}
+        {% endwith %}
 
-    <form method="POST">
-        <div class="form-group">
-            <label for="teacher_name">Teacher Name:</label>
-            <input type="text" name="teacher_name" id="teacher_name" class="form-control" required>
-        </div>
-        <div class="form-group">
-            <label for="course_code">Course Code:</label>
-            <input type="text" name="course_code" id="course_code" class="form-control" required>
-        </div>
-        <div class="form-group">
-            <label for="course_title">Course Title:</label>
-            <input type="text" name="course_title" id="course_title" class="form-control" required>
-        </div>
-        <div class="form-group">
-            <label for="day_of_week">Day of the Week:</label>
-            <input type="text" name="day_of_week" id="day_of_week" class="form-control" required>
-        </div>
-        <div class="form-group">
-            <label for="class_start_time">Class Start Time (HH:MM):</label>
-            <input type="text" name="class_start_time" id="class_start_time" class="form-control" required>
-        </div>
-        <div class="form-group">
-            <label for="class_end_time">Class End Time (HH:MM):</label>
-            <input type="text" name="class_end_time" id="class_end_time" class="form-control" required>
-        </div>
-        <div class="form-group">
-            <label for="room">Room:</label>
-            <input type="text" name="room" id="room" class="form-control" required>
-        </div>
-        <button type="submit" class="btn btn-primary">Add Course</button>
-    </form>
-</div>
+        <form method="POST">
+            <div class="form-group">
+                <label for="teacher_name">Teacher Name</label>
+                <input type="text" id="teacher_name" name="teacher_name" class="form-control" required>
+            </div>
 
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+            <div class="form-group">
+                <label for="course_code">Course Code</label>
+                <input type="text" id="course_code" name="course_code" class="form-control" required>
+            </div>
 
+            <div class="form-group">
+                <label for="course_title">Course Title</label>
+                <input type="text" id="course_title" name="course_title" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="day_of_week">Day of Week</label>
+                <input type="text" id="day_of_week" name="day_of_week" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="class_start_time">Class Start Time</label>
+                <input type="time" id="class_start_time" name="class_start_time" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="class_end_time">Class End Time</label>
+                <input type="time" id="class_end_time" name="class_end_time" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="room">Room</label>
+                <input type="text" id="room" name="room" class="form-control" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Add Course</button>
+        </form>
+
+        <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Back to Schedule</a>
+    </div>
 </body>
 </html>
