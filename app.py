@@ -134,6 +134,7 @@ def course_schedule():
 @app.route('/select_courses', methods=['GET', 'POST'])
 def select_courses():
     try:
+        # Fetch all available courses from the database
         with get_db_connection() as conn:
             if conn:
                 cursor = conn.cursor()
@@ -145,20 +146,22 @@ def select_courses():
         if request.method == 'POST':
             selected_courses = request.form.getlist('courses')
 
+            # Ensure the user selects no more than 6 courses
             if len(selected_courses) > 6:
                 flash("You can only select up to 6 courses.", "warning")
-                return render_template('select_courses.html', courses=courses, selected_courses=selected_courses)
+                return redirect(url_for('select_courses'))  # Redirect back to the same page
 
-            # Save selected courses to the session
-            session['selected_courses'] = [int(course_id) for course_id in selected_courses]
+            # Store selected courses in the session for persistence
+            session['selected_courses'] = selected_courses
 
-            flash("Courses selected successfully.", "success")
-            return redirect(url_for('course_schedule'))
+            # Optionally, you can save the selected courses to a database or perform other actions here
+            flash("Courses successfully selected!", "success")
+            return redirect(url_for('course_schedule'))  # Redirect to the course schedule page
 
-        return render_template('select_courses.html', courses=courses, selected_courses=[])
+        return render_template('select_courses.html', courses=courses)
 
     except sqlite3.Error as e:
-        flash(f"Error fetching courses: {e}", "danger")
+        flash(f"Database error: {e}", "danger")
         return render_template('select_courses.html', courses=[])
 
 
@@ -189,37 +192,33 @@ def add_course():
 
             # Check for scheduling conflicts
             with get_db_connection() as conn:
-                if conn:
-                    cursor = conn.cursor()
-                    cursor.execute(""" 
-                        SELECT * FROM course_schedule 
-                        WHERE (teacher_name = ? AND day_of_week = ? AND 
-                            ((class_start_time < ? AND class_end_time > ?) OR 
-                             (class_start_time < ? AND class_end_time > ?)))
-                        OR (room = ? AND day_of_week = ? AND
-                            ((class_start_time < ? AND class_end_time > ?) OR 
-                             (class_start_time < ? AND class_end_time > ?)))
-                    """, (teacher_name, day_of_week, class_start_time, class_start_time, class_end_time, class_end_time,
-                          room, day_of_week, class_start_time, class_start_time, class_end_time, class_end_time))
-                    existing_courses = cursor.fetchall()
+                cursor = conn.cursor()
+                cursor.execute(""" 
+                    SELECT * FROM course_schedule 
+                    WHERE (teacher_name = ? AND day_of_week = ? AND 
+                        ((class_start_time < ? AND class_end_time > ?) OR 
+                         (class_start_time < ? AND class_end_time > ?)))
+                    OR (room = ? AND day_of_week = ? AND
+                        ((class_start_time < ? AND class_end_time > ?) OR 
+                         (class_start_time < ? AND class_end_time > ?)))
+                """, (teacher_name, day_of_week, class_start_time, class_start_time, class_end_time, class_end_time,
+                      room, day_of_week, class_start_time, class_start_time, class_end_time, class_end_time))
+                existing_courses = cursor.fetchall()
 
-                    if existing_courses:
-                        flash("Course conflicts with an existing course.", "danger")
-                        return render_template('add_course.html')
+                if existing_courses:
+                    flash("Course conflicts with an existing course.", "danger")
+                    return render_template('add_course.html')
 
-                    # Insert new course
-                    cursor.execute(""" 
-                        INSERT INTO course_schedule 
-                        (teacher_name, course_code, course_title, day_of_week, class_start_time, class_end_time, room) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?)""", 
-                        (teacher_name, course_code, course_title, day_of_week, class_start_time, class_end_time, room))
-                    conn.commit()
+                # Insert new course
+                cursor.execute(""" 
+                    INSERT INTO course_schedule 
+                    (teacher_name, course_code, course_title, day_of_week, class_start_time, class_end_time, room) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?)""", 
+                    (teacher_name, course_code, course_title, day_of_week, class_start_time, class_end_time, room))
+                conn.commit()
 
-                    flash("Course added successfully.", "success")
-                    return redirect(url_for('index'))
-
-                else:
-                    raise sqlite3.Error("Failed to connect to the database")
+                flash("Course added successfully.", "success")
+                return redirect(url_for('index'))
 
         except sqlite3.Error as e:
             flash(f"Error saving course: {e}", "danger")
@@ -227,6 +226,7 @@ def add_course():
 
     # If it's a GET request, render the add course form
     return render_template('add_course.html')
+
 
 
 # Route to edit a course

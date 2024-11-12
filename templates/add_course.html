@@ -1,68 +1,63 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add Course</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-</head>
-<body>
-    <div class="container">
-        <h1>Add a New Course</h1>
+{% extends 'base.html' %}
 
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        <div class="alert alert-dismissible fade show" role="alert">
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }}">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-        {% endwith %}
+{% block title %}Add a New Course{% endblock %}
 
-        <form method="POST">
-            <div class="form-group">
-                <label for="teacher_name">Teacher Name</label>
-                <input type="text" id="teacher_name" name="teacher_name" class="form-control" required>
+{% block content %}
+<div class="container">
+    <h1>Add a New Course</h1>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="alert alert-dismissible fade show" role="alert">
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">
+                {{ message }}
             </div>
-
-            <div class="form-group">
-                <label for="course_code">Course Code</label>
-                <input type="text" id="course_code" name="course_code" class="form-control" required>
-            </div>
-
-            <div class="form-group">
-                <label for="course_title">Course Title</label>
-                <input type="text" id="course_title" name="course_title" class="form-control" required>
-            </div>
-
-            <div class="form-group">
-                <label for="day_of_week">Day of Week</label>
-                <input type="text" id="day_of_week" name="day_of_week" class="form-control" required>
-            </div>
-
-            <div class="form-group">
-                <label for="class_start_time">Class Start Time</label>
-                <input type="time" id="class_start_time" name="class_start_time" class="form-control" required>
-            </div>
-
-            <div class="form-group">
-                <label for="class_end_time">Class End Time</label>
-                <input type="time" id="class_end_time" name="class_end_time" class="form-control" required>
-            </div>
-
-            <div class="form-group">
-                <label for="room">Room</label>
-                <input type="text" id="room" name="room" class="form-control" required>
-            </div>
-
-            <button type="submit" class="btn btn-primary">Add Course</button>
-        </form>
-
-        <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Back to Schedule</a>
+        {% endfor %}
     </div>
-</body>
-</html>
+    {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+        <div class="form-group">
+            <label for="teacher_name">Teacher Name</label>
+            <input type="text" id="teacher_name" name="teacher_name" class="form-control" required>
+        </div>
+
+        <div class="form-group">
+            <label for="course_code">Course Code</label>
+            <input type="text" id="course_code" name="course_code" class="form-control" required>
+        </div>
+
+        <div class="form-group">
+            <label for="course_title">Course Title</label>
+            <input type="text" id="course_title" name="course_title" class="form-control" required>
+        </div>
+
+        <div class="form-group">
+            <label for="day_of_week">Day of Week</label>
+            <input type="text" id="day_of_week" name="day_of_week" class="form-control" required>
+        </div>
+
+        <div class="form-group">
+            <label for="class_start_time">Class Start Time</label>
+            <input type="time" id="class_start_time" name="class_start_time" class="form-control" required>
+        </div>
+
+        <div class="form-group">
+            <label for="class_end_time">Class End Time</label>
+            <input type="time" id="class_end_time" name="class_end_time" class="form-control" required>
+        </div>
+
+        <div class="form-group">
+            <label for="room">Room</label>
+            <input type="text" id="room" name="room" class="form-control" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Add Course</button>
+    </form>
+
+    <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Back to Schedule</a>
+</div>
+{% endblock %}
