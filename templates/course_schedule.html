@@ -149,9 +149,58 @@
         ::-webkit-scrollbar-thumb:hover {
             background-color: #0056b3;
         }
+
+        /* Navbar Styling */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+        }
+
+        .navbar .navbar-nav .nav-item .nav-link {
+            font-weight: 600;
+            color: #ffffff;
+            padding: 12px 20px;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+        }
+
+        .navbar .navbar-nav .nav-item .nav-link:hover {
+            color: #ffcb08;
+            text-decoration: underline;
+        }
+
+        .content {
+            padding-top: 80px;
+        }
     </style>
 </head>
 <body>
+    <!-- Fixed Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light fixed-top">
+        <a class="navbar-brand" href="{{ url_for('course_schedule') }}">Course Scheduler</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('add_course') }}">Add Course</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('course_list') }}">View Courses</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('select_courses') }}">Select Courses</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
     <div class="container mt-5">
         <h1>Course Schedule</h1>
 
@@ -182,7 +231,6 @@
             </div>
             <button type="submit" class="btn btn-primary">Submit</button>
         </form>
-        
 
         <div class="mt-5">
             <h4>Your Selected Courses</h4>
@@ -205,7 +253,7 @@
             {% else %}
                 <p>No courses selected yet.</p>
             {% endif %}
-        </div>                
+        </div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
