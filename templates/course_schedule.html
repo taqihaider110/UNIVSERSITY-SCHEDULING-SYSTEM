@@ -1,263 +1,125 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Course Schedule</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
-        /* General Body Styling */
         body {
             font-family: 'Roboto', sans-serif;
-            background: linear-gradient(135deg, #e3f2fd, #f1f8e9);
+            background-color: #f4f7fa;
             margin: 0;
             padding: 20px;
-            color: #333;
         }
 
-        /* Main Header */
         h1 {
             text-align: center;
-            color: #0069d9;
+            color: #007bff;
             font-size: 2.8rem;
             font-weight: 700;
             margin-bottom: 30px;
-            letter-spacing: 1px;
-            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
         }
 
-        h4 {
+        .table-container {
+            margin-top: 50px;
+            overflow-x: auto;
+        }
+
+        .table {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .table th,
+        .table td {
+            text-align: center;
+            padding: 15px;
+            vertical-align: middle;
+        }
+
+        .table th {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .table td {
+            background-color: #f8f9fa;
+        }
+
+        .table td .course-name {
+            font-weight: bold;
             color: #007bff;
-            font-size: 1.8rem;
-            font-weight: 600;
         }
 
-        /* Form Styling */
-        form {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 30px;
-            background-color: #ffffff;
-            border-radius: 15px;
-            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+        .table td .teacher-name {
+            font-size: 1.1rem;
+            color: #333;
         }
 
-        .form-group label {
-            font-size: 1.2rem;
+        .table td .course-time {
+            color: #777;
+            font-size: 0.9rem;
+        }
+
+        .table td .course-room {
+            font-size: 1rem;
             font-weight: 600;
             color: #333;
         }
 
-        .form-control {
-            font-size: 1.1rem;
-            padding: 10px;
-        }
-
-        button {
-            width: 100%;
-            padding: 15px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1.2rem;
-            transition: background-color 0.3s ease, box-shadow 0.2s ease;
-        }
-
-        button:hover {
-            background-color: #0056b3;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-
-        .btn-danger {
-            width: 100%;
-            padding: 10px;
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1.1rem;
-            transition: background-color 0.3s ease;
-        }
-
-        .btn-danger:hover {
-            background-color: #c82333;
-        }
-
-        .list-group-item {
-            font-size: 1.1rem;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 8px;
-            background-color: #f8f9fa;
-        }
-
-        .alert {
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-            font-size: 1.1rem;
-            border-left: 5px solid;
-        }
-
-        /* Custom Styling for Flash Alerts */
-        .alert-success {
-            background-color: #d4edda;
-            border-color: #c3e6cb;
-        }
-
-        .alert-danger {
-            background-color: #f8d7da;
-            border-color: #f5c6cb;
-        }
-
-        /* Mobile Responsiveness */
-        @media (max-width: 768px) {
-            form {
-                padding: 20px;
-            }
-
-            h1 {
-                font-size: 2.2rem;
-            }
-
-            h4 {
-                font-size: 1.6rem;
-            }
-
-            button {
-                font-size: 1rem;
-            }
-
-            .list-group-item {
-                font-size: 1rem;
-            }
-        }
-
-        /* Custom Scrollbars */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background-color: #007bff;
-            border-radius: 10px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background-color: #0056b3;
-        }
-
-        /* Navbar Styling */
-        .navbar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            background: linear-gradient(90deg, #4facfe, #00f2fe);
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-            z-index: 1000;
-        }
-
-        .navbar .navbar-nav .nav-item .nav-link {
-            font-weight: 600;
-            color: #ffffff;
-            padding: 12px 20px;
-            font-size: 1.1rem;
-            transition: all 0.3s ease;
-        }
-
-        .navbar .navbar-nav .nav-item .nav-link:hover {
-            color: #ffcb08;
-            text-decoration: underline;
-        }
-
-        .content {
-            padding-top: 80px;
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            font-size: 1rem;
         }
     </style>
 </head>
+
 <body>
-    <!-- Fixed Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-light fixed-top">
-        <a class="navbar-brand" href="{{ url_for('course_schedule') }}">Course Scheduler</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav ml-auto">
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('add_course') }}">Add Course</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('course_list') }}">View Courses</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('select_courses') }}">Select Courses</a>
-                </li>
-            </ul>
-        </div>
-    </nav>
 
-    <div class="container mt-5">
-        <h1>Course Schedule</h1>
+    <h1>My Course Schedule</h1>
 
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <ul class="list-unstyled">
-                    {% for category, message in messages %}
-                        <li class="alert alert-{{ category }}">{{ message }}</li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
-        {% endwith %}
-
-        <form method="POST" action="{{ url_for('select_courses') }}">
-            <h4>Select Your Courses</h4>
-            <div class="form-group">
-                <label for="courses">Available Courses</label>
-                <select name="courses" id="courses" class="form-control" multiple size="10">
+    <div class="container">
+        <div class="table-container">
+            {% if selected_courses %}
+            {% for day, courses in grouped_courses_by_day.items() %}
+            <h2>{{ day }}</h2>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Course Name</th>
+                        <th>Professor</th>
+                        <th>Time</th>
+                        <th>Room</th>
+                    </tr>
+                </thead>
+                <tbody>
                     {% for course in courses %}
-                        <option value="{{ course.id }}" 
-                            {% if course.id in selected_courses_ids %}selected{% endif %}>
-                            {{ course.course_title }} ({{ course.teacher_name }}) - {{ course.day_of_week }}
-                            {{ course.class_start_time }} - {{ course.class_end_time }}
-                        </option>
+                    <tr>
+                        <td class="course-name">{{ course[2] }}</td>  <!-- Course Title -->
+                        <td class="teacher-name">{{ course[1] }}</td>  <!-- Teacher Name -->
+                        <td class="course-time">{{ course[4] }} - {{ course[5] }}</td>  <!-- Start Time & End Time -->
+                        <td class="course-room">{{ course[6] }}</td>  <!-- Room -->
+                    </tr>
                     {% endfor %}
-                </select>
-            </div>
-            <button type="submit" class="btn btn-primary">Submit</button>
-        </form>
-
-        <div class="mt-5">
-            <h4>Your Selected Courses</h4>
-            {% if courses %}
-                <ul class="list-group">
-                    {% for course in courses %}
-                        <li class="list-group-item">
-                            <strong>{{ course['course_title'] }}</strong> <br>
-                            Teacher: {{ course['teacher_name'] }} <br>
-                            Day: {{ course['day_of_week'] }} <br>
-                            Time: {{ course['class_start_time'] }} - {{ course['class_end_time'] }} <br>
-                            Room: {{ course['room'] }} <br>
-                            <!-- Delete Button -->
-                            <form action="{{ url_for('delete_course', id=course['id']) }}" method="POST">
-                                <button type="submit" class="btn btn-danger">Delete</button>
-                            </form>
-                        </li>
-                    {% endfor %}
-                </ul>
+                </tbody>
+            </table>
+            {% endfor %}
             {% else %}
-                <p>No courses selected yet.</p>
+            <p>No courses selected or available.</p>
             {% endif %}
         </div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.1/dist/umd/popper.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <footer>
+        <p>&copy; 2024 Course Scheduler. All rights reserved.</p>
+    </footer>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>

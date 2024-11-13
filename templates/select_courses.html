@@ -1,147 +1,205 @@
 {% extends 'base.html' %}
-
 {% block content %}
-    <div class="container mt-5">
-        <h1 class="text-center mb-4 text-primary">Select Your Courses</h1>
-        
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        <div class="alert-container mb-4">
-            {% for category, message in messages %}
-            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-        {% endwith %}
-        
-        <div class="card shadow-lg p-4 rounded">
-            <form method="POST">
-                <div class="form-group">
-                    <label class="font-weight-bold text-dark">Select up to 6 courses:</label><br>
-                    {% for course in courses %}
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" name="courses" value="{{ course.id }}"
-                               {% if course.id in selected_courses %} checked {% endif %}>
-                        <label class="form-check-label text-dark">
-                            {{ course.course_title }} ({{ course.course_code }})
-                        </label>
-                    </div>
-                    {% endfor %}
-                </div>
-                <button type="submit" class="btn btn-primary btn-block btn-lg mt-3">Select Courses</button>
-            </form>
-            
-            <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3 d-block mx-auto btn-lg">Back to Schedule</a>
-        </div>
-    </div>
+<div class="container mt-5">
+  <h1 class="text-center mb-4 text-primary">Select Your Courses</h1>
 
-{% endblock %}
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="alert-container mb-4">
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <div class="card shadow-lg p-4 rounded">
+    <form method="POST" id="courseForm">
+      <div class="form-group">
+        <label class="font-weight-bold text-dark">Select up to 6 courses:</label><br />
+        <div class="form-group">
+          <input type="text" id="search" class="form-control" placeholder="Search courses..." />
+        </div>
+        <div id="courseList">
+          {% for course in courses %}
+          <div class="form-check mb-3 course-item">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              name="courses"
+              value="{{ course[0] }}"
+              {% if course[0] in selected_courses %} checked {% endif %}
+              id="course_{{ course[0] }}"
+            />
+            <label class="form-check-label text-dark" for="course_{{ course[0] }}">
+              {{ course[1] }} ({{ course[2] }}) - {{ course[3] }}<br />
+              {{ course[4] }} | {{ course[5] }} - {{ course[6] }}
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+        <small class="form-text text-muted">You can select up to 6 courses. Uncheck a course to remove it.</small>
+      </div>
+
+      <!-- Submit Button -->
+      <button type="submit" class="btn btn-primary btn-block btn-lg mt-3" id="submitBtn" disabled>
+        Select Courses
+      </button>
+
+      <!-- Clear Button -->
+      <button type="button" class="btn btn-warning btn-block btn-lg mt-2" id="clearBtn">
+        Clear Selection
+      </button>
+    </form>
+
+    <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3 d-block mx-auto btn-lg">Back to Schedule</a>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    const submitBtn = document.getElementById('submitBtn');
+    const clearBtn = document.getElementById('clearBtn');
+
+    // Enable submit button based on selection limit
+    function updateSubmitButton() {
+      const checkedCount = Array.from(checkboxes).filter(checkbox => checkbox.checked).length;
+      submitBtn.disabled = checkedCount === 0 || checkedCount > 6;
+    }
+
+    // Event listeners for checkboxes
+    checkboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', updateSubmitButton);
+    });
+
+    // Clear button functionality
+    clearBtn.addEventListener('click', function () {
+      checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+      });
+      updateSubmitButton();
+    });
+
+    // Initial button state
+    updateSubmitButton();
+  });
+</script>
 
 <style>
-    /* General page styling */
-    .container {
-        max-width: 750px;
-        margin-top: 40px;
-    }
+  .container {
+    max-width: 750px;
+    margin-top: 40px;
+  }
 
-    /* Flash messages */
-    .alert-container .alert {
-        font-size: 1.1em;
-        padding: 15px;
-        margin-bottom: 15px;
-        border-radius: 10px;
-    }
+  .alert-container .alert {
+    font-size: 1.1em;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 10px;
+  }
 
-    /* Card Styling */
-    .card {
-        background-color: #f9f9f9;
-        border: none;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        border-radius: 15px;
-        padding: 25px;
-    }
+  .card {
+    background-color: #f9f9f9;
+    border: none;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 15px;
+    padding: 25px;
+  }
 
-    .card .form-check {
-        padding: 12px;
-        border-radius: 8px;
-        margin: 10px 0;
-        background-color: #f4f7fb;
-        transition: background-color 0.3s ease;
-    }
+  .form-check {
+    padding: 12px;
+    border-radius: 8px;
+    margin: 10px 0;
+    background-color: #f4f7fb;
+    transition: background-color 0.3s ease;
+  }
 
-    .form-check:hover {
-        background-color: #e9ecf4;
-    }
+  .form-check:hover {
+    background-color: #e9ecf4;
+  }
 
-    .form-check-input {
-        margin-right: 10px;
-    }
+  .form-check-input {
+    margin-right: 10px;
+  }
 
-    .form-check-label {
-        font-size: 1.1em;
-        font-weight: 500;
-    }
+  .form-check-label {
+    font-size: 1.1em;
+    font-weight: 500;
+  }
 
-    /* Header */
-    h1 {
-        font-size: 2.5em;
-        font-weight: bold;
-        color: #2a7fff;
-    }
+  h1 {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #2a7fff;
+  }
 
-    /* Styling for Submit Button */
-    .btn-primary {
-        background-color: #2a7fff;
-        border-color: #2a7fff;
-        padding: 12px;
-        font-size: 1.2em;
-        border-radius: 8px;
-    }
+  .btn-primary {
+    background-color: #2a7fff;
+    border-color: #2a7fff;
+    padding: 12px;
+    font-size: 1.2em;
+    border-radius: 8px;
+  }
 
-    .btn-primary:hover {
-        background-color: #1a5fbf;
-        border-color: #1a5fbf;
-    }
+  .btn-primary:hover {
+    background-color: #1a5fbf;
+    border-color: #1a5fbf;
+  }
 
-    /* Styling for Back Button */
-    .btn-secondary {
-        background-color: #6c757d;
-        border-color: #6c757d;
-        padding: 12px;
-        font-size: 1.1em;
-        border-radius: 8px;
-    }
+  .btn-warning {
+    background-color: #ffc107;
+    border-color: #ffc107;
+    padding: 12px;
+    font-size: 1.1em;
+    border-radius: 8px;
+  }
 
-    .btn-secondary:hover {
-        background-color: #5a6268;
-        border-color: #545b62;
-    }
+  .btn-warning:hover {
+    background-color: #e0a800;
+    border-color: #d39e00;
+  }
 
-    /* Spacing and typography for better readability */
-    .form-group {
-        margin-bottom: 30px;
-    }
+  .btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    padding: 12px;
+    font-size: 1.1em;
+    border-radius: 8px;
+  }
 
-    /* Alert button styles */
-    .alert-dismissible .close {
-        font-size: 1.6em;
-        color: #333;
-    }
+  .btn-secondary:hover {
+    background-color: #5a6268;
+    border-color: #545b62;
+  }
 
-    /* Hover effects for buttons */
-    .btn-lg {
-        padding: 15px;
-        font-size: 1.2em;
-    }
-    
-    /* Background color for form and card */
-    body {
-        background-color: #f0f3f7;
-    }
+  .form-group {
+    margin-bottom: 30px;
+  }
+
+  .alert-dismissible .close {
+    font-size: 1.6em;
+    color: #333;
+  }
+
+  .btn-lg {
+    padding: 15px;
+    font-size: 1.2em;
+  }
+
+  body {
+    font-family: "Arial", sans-serif;
+    color: #333;
+  }
+
+  .font-weight-bold {
+    font-weight: 700;
+  }
 </style>
+{% endblock %}

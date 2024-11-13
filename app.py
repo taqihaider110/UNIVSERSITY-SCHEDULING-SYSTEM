@@ -107,45 +107,76 @@ def course_schedule():
         # Fetch selected course IDs from the session
         selected_courses_ids = session.get('selected_courses', [])
 
-        # Ensure selected_courses_ids is not empty or invalid
+        # Check if any courses were selected
         if not selected_courses_ids:
             flash("No courses selected yet.", "info")
-            return render_template('course_schedule.html', courses=[])
+            return render_template('course_schedule.html', grouped_courses_by_day={}, selected_courses=[])
 
+        # Connect to the database
         with get_db_connection() as conn:
             if conn:
                 cursor = conn.cursor()
-                # Fetch courses from the database based on the selected course IDs
-                query = "SELECT * FROM course_schedule WHERE id IN ({})".format(
+                # Prepare the SQL query for selected courses
+                query = "SELECT id, teacher_name, course_title, day_of_week, class_start_time, class_end_time, room FROM course_schedule WHERE id IN ({})".format(
                     ','.join('?' for _ in selected_courses_ids)
                 )
                 cursor.execute(query, tuple(selected_courses_ids))
                 selected_courses = cursor.fetchall()
 
-        # If no courses are found, show an info message
-        if not selected_courses:
-            flash("The selected courses were not found in the database.", "warning")
+                # If no courses are found in the database
+                if not selected_courses:
+                    flash("The selected courses were not found in the database.", "warning")
+                    return render_template('course_schedule.html', grouped_courses_by_day={}, selected_courses=[])
 
-        return render_template('course_schedule.html', courses=selected_courses)
+            else:
+                raise sqlite3.Error("Database connection failed")
+
+        # Group courses by day of the week for better display
+        grouped_courses_by_day = {}
+        for course in selected_courses:
+            day = course[3]  # 'day_of_week'
+            if day not in grouped_courses_by_day:
+                grouped_courses_by_day[day] = []
+            grouped_courses_by_day[day].append(course)
+
+        # Sort courses within each day by start time for clarity
+        for day in grouped_courses_by_day:
+            grouped_courses_by_day[day].sort(key=lambda x: x[4])  # Sort by 'class_start_time'
+
+        # Pass selected courses to the template for display
+        return render_template('course_schedule.html', grouped_courses_by_day=grouped_courses_by_day, selected_courses=selected_courses)
 
     except sqlite3.Error as e:
         flash(f"Error fetching selected courses: {e}", "danger")
-        return render_template('course_schedule.html', courses=[])
+        return render_template('course_schedule.html', grouped_courses_by_day={}, selected_courses=[])
+
+    except Exception as e:
+        flash(f"An unexpected error occurred: {e}", "danger")
+        return render_template('course_schedule.html', grouped_courses_by_day={}, selected_courses=[])
+
+
 
 # Route to select courses
 @app.route('/select_courses', methods=['GET', 'POST'])
 def select_courses():
     try:
-        # Fetch all available courses from the database
+        # Fetch all available courses with teacher information
         with get_db_connection() as conn:
             if conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT * FROM course_schedule")
+                cursor.execute("""
+                    SELECT id, teacher_name, course_code , course_title, day_of_week, class_start_time, class_end_time
+                    FROM course_schedule
+                """)
                 courses = cursor.fetchall()
             else:
                 raise sqlite3.Error("Failed to connect to the database")
 
+        # Get the list of selected courses from the session, defaulting to an empty list if none
+        selected_courses = session.get('selected_courses', [])
+
         if request.method == 'POST':
+            # Get the list of selected courses from the form (checkboxes)
             selected_courses = request.form.getlist('courses')
 
             # Ensure the user selects no more than 6 courses
@@ -153,18 +184,23 @@ def select_courses():
                 flash("You can only select up to 6 courses.", "warning")
                 return redirect(url_for('select_courses'))  # Redirect back to the same page
 
-            # Store selected courses in the session for persistence
+            if len(selected_courses) == 0:
+                flash("Please select at least one course.", "warning")
+                return redirect(url_for('select_courses'))
+
+            # Store the selected courses in the session for persistence
             session['selected_courses'] = selected_courses
 
-            # Optionally, you can save the selected courses to a database or perform other actions here
             flash("Courses successfully selected!", "success")
             return redirect(url_for('course_schedule'))  # Redirect to the course schedule page
 
-        return render_template('select_courses.html', courses=courses)
+        # Pass the selected_courses to the template
+        return render_template('select_courses.html', courses=courses, selected_courses=selected_courses)
 
     except sqlite3.Error as e:
         flash(f"Database error: {e}", "danger")
-        return render_template('select_courses.html', courses=[])
+        return render_template('select_courses.html', courses=[], selected_courses=[])
+
 
 
 # Route to add a new course
