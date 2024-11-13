@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, session, url_for, flash, abort
+from flask import Flask, render_template, request, redirect, session, url_for, flash
 import sqlite3
 from datetime import datetime
 
@@ -104,31 +104,33 @@ def course_list():
 @app.route('/course_schedule', methods=['GET'])
 def course_schedule():
     try:
-        # Fetch selected courses from the session (or database if saved there)
-        selected_courses = session.get('selected_courses', [])
+        # Fetch selected course IDs from the session
+        selected_courses_ids = session.get('selected_courses', [])
+
+        # Ensure selected_courses_ids is not empty or invalid
+        if not selected_courses_ids:
+            flash("No courses selected yet.", "info")
+            return render_template('course_schedule.html', courses=[])
 
         with get_db_connection() as conn:
             if conn:
                 cursor = conn.cursor()
-                if selected_courses:
-                    # Fetch the selected courses from the database
-                    query = "SELECT * FROM course_schedule WHERE id IN ({})".format(
-                        ','.join('?' for _ in selected_courses)
-                    )
-                    cursor.execute(query, tuple(selected_courses))
-                    courses = cursor.fetchall()
-                else:
-                    courses = []  # No courses selected
+                # Fetch courses from the database based on the selected course IDs
+                query = "SELECT * FROM course_schedule WHERE id IN ({})".format(
+                    ','.join('?' for _ in selected_courses_ids)
+                )
+                cursor.execute(query, tuple(selected_courses_ids))
+                selected_courses = cursor.fetchall()
 
-        if not courses:
-            flash("No courses are currently selected.", "info")
+        # If no courses are found, show an info message
+        if not selected_courses:
+            flash("The selected courses were not found in the database.", "warning")
 
-        return render_template('course_schedule.html', courses=courses)
+        return render_template('course_schedule.html', courses=selected_courses)
 
     except sqlite3.Error as e:
         flash(f"Error fetching selected courses: {e}", "danger")
         return render_template('course_schedule.html', courses=[])
-
 
 # Route to select courses
 @app.route('/select_courses', methods=['GET', 'POST'])
@@ -212,22 +214,17 @@ def add_course():
                 # Insert new course
                 cursor.execute(""" 
                     INSERT INTO course_schedule 
-                    (teacher_name, course_code, course_title, day_of_week, class_start_time, class_end_time, room) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?)""", 
-                    (teacher_name, course_code, course_title, day_of_week, class_start_time, class_end_time, room))
+                    (teacher_name, course_code, course_title, day_of_week, class_start_time, class_end_time, room)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (teacher_name, course_code, course_title, day_of_week, class_start_time, class_end_time, room))
                 conn.commit()
-
-                flash("Course added successfully.", "success")
-                return redirect(url_for('index'))
+                flash("Course added successfully!", "success")
+                return redirect(url_for('index'))  # Redirect to the home page
 
         except sqlite3.Error as e:
-            flash(f"Error saving course: {e}", "danger")
-            return render_template('add_course.html')
+            flash(f"Error adding course: {e}", "danger")
 
-    # If it's a GET request, render the add course form
     return render_template('add_course.html')
-
-
 
 # Route to edit a course
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])

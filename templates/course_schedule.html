@@ -186,27 +186,26 @@
 
         <div class="mt-5">
             <h4>Your Selected Courses</h4>
-            {% if selected_courses %}
+            {% if courses %}
                 <ul class="list-group">
-                    {% for course in selected_courses %}
+                    {% for course in courses %}
                         <li class="list-group-item">
-                            <strong>{{ course.course_title }}</strong> <br>
-                            Teacher: {{ course.teacher_name }} <br>
-                            Day: {{ course.day_of_week }} <br>
-                            Time: {{ course.class_start_time }} - {{ course.class_end_time }} <br>
-                            Room: {{ course.room }} <br>
+                            <strong>{{ course['course_title'] }}</strong> <br>
+                            Teacher: {{ course['teacher_name'] }} <br>
+                            Day: {{ course['day_of_week'] }} <br>
+                            Time: {{ course['class_start_time'] }} - {{ course['class_end_time'] }} <br>
+                            Room: {{ course['room'] }} <br>
                             <!-- Delete Button -->
-                            <form action="{{ url_for('delete_course', id=course.id) }}" method="POST">
+                            <form action="{{ url_for('delete_course', id=course['id']) }}" method="POST">
                                 <button type="submit" class="btn btn-danger">Delete</button>
                             </form>
-                            
                         </li>
                     {% endfor %}
                 </ul>
             {% else %}
                 <p>No courses selected yet.</p>
             {% endif %}
-        </div>
+        </div>                
     </div>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
