@@ -23,9 +23,7 @@
     <form method="POST" id="courseForm">
       <div class="form-group">
         <label class="font-weight-bold text-dark">Select up to 6 courses:</label><br />
-        <div class="form-group">
-          <input type="text" id="search" class="form-control" placeholder="Search courses..." />
-        </div>
+        <small class="form-text text-muted">You can select up to 6 courses. Uncheck a course to remove it.</small>
         <div id="courseList">
           {% for course in courses %}
           <div class="form-check mb-3 course-item">
@@ -44,18 +42,14 @@
           </div>
           {% endfor %}
         </div>
-        <small class="form-text text-muted">You can select up to 6 courses. Uncheck a course to remove it.</small>
       </div>
 
-      <!-- Submit Button -->
-      <button type="submit" class="btn btn-primary btn-block btn-lg mt-3" id="submitBtn" disabled>
-        Select Courses
-      </button>
+      <!-- Button Controls -->
+      <div class="d-flex justify-content-between">
+        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" disabled>Select Courses</button>
+        <button type="button" class="btn btn-warning btn-lg" id="clearBtn">Clear Selection</button>
+      </div>
 
-      <!-- Clear Button -->
-      <button type="button" class="btn btn-warning btn-block btn-lg mt-2" id="clearBtn">
-        Clear Selection
-      </button>
     </form>
 
     <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3 d-block mx-auto btn-lg">Back to Schedule</a>
@@ -201,5 +195,15 @@
   .font-weight-bold {
     font-weight: 700;
   }
+
+  .d-flex {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .btn-lg {
+    width: 48%;
+  }
 </style>
+
 {% endblock %}

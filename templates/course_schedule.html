@@ -1,125 +1,39 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Course Schedule</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <style>
-        body {
-            font-family: 'Roboto', sans-serif;
-            background-color: #f4f7fa;
-            margin: 0;
-            padding: 20px;
-        }
+{% block title %}Course Schedule{% endblock %}
 
-        h1 {
-            text-align: center;
-            color: #007bff;
-            font-size: 2.8rem;
-            font-weight: 700;
-            margin-bottom: 30px;
-        }
-
-        .table-container {
-            margin-top: 50px;
-            overflow-x: auto;
-        }
-
-        .table {
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .table th,
-        .table td {
-            text-align: center;
-            padding: 15px;
-            vertical-align: middle;
-        }
-
-        .table th {
-            background-color: #007bff;
-            color: white;
-        }
-
-        .table td {
-            background-color: #f8f9fa;
-        }
-
-        .table td .course-name {
-            font-weight: bold;
-            color: #007bff;
-        }
-
-        .table td .teacher-name {
-            font-size: 1.1rem;
-            color: #333;
-        }
-
-        .table td .course-time {
-            color: #777;
-            font-size: 0.9rem;
-        }
-
-        .table td .course-room {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #333;
-        }
-
-        footer {
-            text-align: center;
-            margin-top: 50px;
-            font-size: 1rem;
-        }
-    </style>
-</head>
-
-<body>
-
-    <h1>My Course Schedule</h1>
+{% block content %}
+    <h1 class="text-center text-primary mb-5">My Course Schedule</h1>
 
     <div class="container">
         <div class="table-container">
             {% if selected_courses %}
-            {% for day, courses in grouped_courses_by_day.items() %}
-            <h2>{{ day }}</h2>
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Course Name</th>
-                        <th>Professor</th>
-                        <th>Time</th>
-                        <th>Room</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for course in courses %}
-                    <tr>
-                        <td class="course-name">{{ course[2] }}</td>  <!-- Course Title -->
-                        <td class="teacher-name">{{ course[1] }}</td>  <!-- Teacher Name -->
-                        <td class="course-time">{{ course[4] }} - {{ course[5] }}</td>  <!-- Start Time & End Time -->
-                        <td class="course-room">{{ course[6] }}</td>  <!-- Room -->
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% endfor %}
+                {% for day, courses in grouped_courses_by_day.items() %}
+                    <h2 class="text-center text-info mb-4">{{ day }}</h2>
+                    <table class="table table-hover table-striped shadow-lg rounded-lg">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th class="text-center">Course Name</th>
+                                <th class="text-center">Professor</th>
+                                <th class="text-center">Time</th>
+                                <th class="text-center">Room</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for course in courses %}
+                                <tr>
+                                    <td class="course-name">{{ course[2] }}</td>  <!-- Course Title -->
+                                    <td class="teacher-name">{{ course[1] }}</td>  <!-- Teacher Name -->
+                                    <td class="course-time">{{ course[4] }} - {{ course[5] }}</td>  <!-- Start Time & End Time -->
+                                    <td class="course-room">{{ course[6] }}</td>  <!-- Room -->
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endfor %}
             {% else %}
-            <p>No courses selected or available.</p>
+                <p class="text-center text-danger">No courses selected or available.</p>
             {% endif %}
         </div>
     </div>
-
-    <footer>
-        <p>&copy; 2024 Course Scheduler. All rights reserved.</p>
-    </footer>
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-
-</html>
+{% endblock %}
