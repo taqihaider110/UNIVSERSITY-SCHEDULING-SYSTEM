@@ -8,47 +8,49 @@
     <div class="container">
         <div class="table-container">
             {% if selected_courses %}
-                {% for day, courses in grouped_courses_by_day.items() %}
-                    <h2 class="text-center text-info mb-4">{{ day }}</h2>
-                    <table class="table table-hover table-striped shadow-lg rounded-lg">
-                        <thead class="thead-dark">
-                            <tr>
-                                <th class="text-center">Course Name</th>
-                                <th class="text-center">Professor</th>
-                                <th class="text-center">Time</th>
-                                <th class="text-center">Room</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for course in courses %}
+                {% set ordered_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+                {% for day in ordered_days %}
+                    {% if grouped_courses_by_day[day] %}
+                        <h2 class="text-center text-info mb-4">{{ day }}</h2>
+                        <table class="table table-hover table-striped shadow-lg rounded-lg">
+                            <thead class="thead-dark">
                                 <tr>
-                                    <td class="course-name">{{ course[2] }}</td>  <!-- Course Title -->
-                                    <td class="teacher-name">{{ course[1] }}</td>  <!-- Teacher Name -->
-                                    <td class="course-time">{{ course[4] }} - {{ course[5] }}</td>  <!-- Start Time & End Time -->
-                                    <td class="course-room">{{ course[6] }}</td>  <!-- Room -->
+                                    <th class="text-center">Course Name</th>
+                                    <th class="text-center">Professor</th>
+                                    <th class="text-center">Time</th>
+                                    <th class="text-center">Room</th>
                                 </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    
-                    {% if conflicts[day] %}
-                        <div class="alert alert-danger mt-4">
-                            <h5>Conflicts Detected for {{ day }}</h5>
-                            <ul>
-                                {% for conflict in conflicts[day] %}
-                                    <li>
-                                        <strong>{{ conflict.course_name }}</strong> ({{ conflict.teacher_name }}) conflicts with 
-                                        <strong>{{ conflict.conflicting_course_name }}</strong> ({{ conflict.conflicting_teacher_name }}) 
-                                        from {{ conflict.conflicting_start_time }} to {{ conflict.conflicting_end_time }} in Room {{ conflict.conflicting_room }}.
-                                    </li>
+                            </thead>
+                            <tbody>
+                                {% for course in grouped_courses_by_day[day] %}
+                                    <tr>
+                                        <td class="course-name">{{ course[2] }}</td>  <!-- Course Title -->
+                                        <td class="teacher-name">{{ course[1] }}</td>  <!-- Teacher Name -->
+                                        <td class="course-time">{{ course[4] }} - {{ course[5] }}</td>  <!-- Start Time & End Time -->
+                                        <td class="course-room">{{ course[6] }}</td>  <!-- Room -->
+                                    </tr>
                                 {% endfor %}
-                            </ul>
-                            <form method="POST" action="{{ url_for('resolve_conflicts') }}">
-                                <button type="submit" class="btn btn-warning">Resolve Conflicts</button>
-                            </form>
-                        </div>
+                            </tbody>
+                        </table>
+                        
+                        {% if conflicts[day] %}
+                            <div class="alert alert-danger mt-4">
+                                <h5>Conflicts Detected for {{ day }}</h5>
+                                <ul>
+                                    {% for conflict in conflicts[day] %}
+                                        <li>
+                                            <strong>{{ conflict.course_name }}</strong> ({{ conflict.teacher_name }}) conflicts with 
+                                            <strong>{{ conflict.conflicting_course_name }}</strong> ({{ conflict.conflicting_teacher_name }}) 
+                                            from {{ conflict.conflicting_start_time }} to {{ conflict.conflicting_end_time }} in Room {{ conflict.conflicting_room }}.
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                                <form method="POST" action="{{ url_for('resolve_conflicts') }}">
+                                    <button type="submit" class="btn btn-warning">Resolve Conflicts</button>
+                                </form>
+                            </div>
+                        {% endif %}
                     {% endif %}
-                    
                 {% endfor %}
             {% else %}
                 <p class="text-center text-danger">No courses selected or available.</p>
