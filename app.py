@@ -64,7 +64,7 @@ def check_schedule_conflict(conn, teacher_name, day_of_week, start_time, end_tim
    
 
 
-
+#Resolving Conflicts through Both Greedy And Backtracking
 @app.route('/resolve_conflicts', methods=['POST'])
 def resolve_conflicts():
     selected_courses_ids = session.get('selected_courses', [])
@@ -73,27 +73,162 @@ def resolve_conflicts():
         flash("No courses selected yet.", "info")
         return redirect(url_for('course_schedule'))
 
-    # Greedy algorithm
+    # Greedy algorithm result
     greedy_result = resolve_conflicts_greedy(selected_courses_ids)
 
-    # Backtracking algorithm
+    # Backtracking algorithm result
     backtracking_result = resolve_conflicts_backtracking(selected_courses_ids)
+    
+    # Initialize backtracking_result if it is None
+    if backtracking_result is None:
+        backtracking_result = {'resolved_courses': [], 'unresolved_courses': []}
 
+    # Check if the results are empty and provide alternative messages
+    if not backtracking_result['resolved_courses']:
+        backtracking_result['resolved_message'] = "The backtracking algorithm couldn't resolve any conflicts."
+    else:
+        backtracking_result['resolved_message'] = "Conflicts were resolved successfully by the backtracking algorithm."
+    
+    if not backtracking_result['unresolved_courses']:
+        backtracking_result['unresolved_message'] = "No unresolved conflicts were found after applying the backtracking algorithm."
+    else:
+        backtracking_result['unresolved_message'] = "Some unresolved conflicts exist after applying the backtracking algorithm."
+
+    # Return both results to the template
     return render_template('resolve_conflicts.html', greedy_result=greedy_result, backtracking_result=backtracking_result)
+
+
 
 
 # Greedy Algorithm: Resolves conflicts by selecting the first available room/time slot.
 def resolve_conflicts_greedy(selected_courses_ids):
-    # Implement the greedy conflict resolution algorithm
-    # Resolve conflicts by taking the first available slot.
-    return "Greedy result logic here"
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        query = "SELECT id, teacher_name, course_title, day_of_week, class_start_time, class_end_time, room FROM course_schedule WHERE id IN ({})".format(
+            ','.join('?' for _ in selected_courses_ids)
+        )
+        cursor.execute(query, tuple(selected_courses_ids))
+        selected_courses = cursor.fetchall()
+
+    # Group courses by day for easier conflict checking
+    grouped_courses_by_day = {}
+    for course in selected_courses:
+        day = course[3]  # 'day_of_week'
+        if day not in grouped_courses_by_day:
+            grouped_courses_by_day[day] = []
+        grouped_courses_by_day[day].append(course)
+
+    # Try to resolve conflicts greedily
+    resolved_courses = []
+    unresolved_courses = []  # Courses that couldn't be scheduled due to conflicts
+    for day, courses in grouped_courses_by_day.items():
+        available_times = {}  # Dictionary to track available time slots for each room
+
+        for course in courses:
+            room = course[6]
+            start_time = course[4]
+            end_time = course[5]
+
+            # Check if the room is available at this time
+            if room not in available_times:
+                available_times[room] = []
+
+            conflict = False
+            for (existing_start, existing_end) in available_times[room]:
+                # Check if there is a time conflict (i.e., the times overlap)
+                if not (end_time <= existing_start or start_time >= existing_end):
+                    conflict = True
+                    break
+
+            # If no conflict, assign the room/time slot
+            if not conflict:
+                available_times[room].append((start_time, end_time))
+                resolved_courses.append({
+                    'id': course[0],
+                    'course_title': course[2],
+                    'teacher_name': course[1],
+                    'day_of_week': course[3],
+                    'class_start_time': course[4],
+                    'class_end_time': course[5],
+                    'room': course[6]
+                })
+            else:
+                # If a conflict occurs, add it to unresolved_courses
+                unresolved_courses.append({
+                    'id': course[0],
+                    'course_title': course[2],
+                    'teacher_name': course[1],
+                    'day_of_week': course[3],
+                    'class_start_time': course[4],
+                    'class_end_time': course[5],
+                    'room': course[6],
+                    'conflict': "Room already assigned for this time slot"
+                })
+
+    # Return both resolved and unresolved courses to handle them separately in the view
+    return {
+        'resolved_courses': resolved_courses,
+        'unresolved_courses': unresolved_courses
+    }
+
+
 
 # Backtracking Algorithm: Recursively checks and assigns the next available time slot 
 # while undoing previous assignments if a conflict arises.
 def resolve_conflicts_backtracking(selected_courses_ids):
-    # Implement the backtracking conflict resolution algorithm
-    # Try all possibilities and backtrack if necessary.
-    return "Backtracking result logic here"
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        query = "SELECT id, teacher_name, course_title, day_of_week, class_start_time, class_end_time, room FROM course_schedule WHERE id IN ({})".format(
+            ','.join('?' for _ in selected_courses_ids)
+        )
+        cursor.execute(query, tuple(selected_courses_ids))
+        selected_courses = cursor.fetchall()
+
+    # Group courses by day for easier conflict checking
+    grouped_courses_by_day = {}
+    for course in selected_courses:
+        day = course[3]  # 'day_of_week'
+        if day not in grouped_courses_by_day:
+            grouped_courses_by_day[day] = []
+        grouped_courses_by_day[day].append(course)
+
+    def backtrack(courses, current_index, assigned_courses, available_times):
+        if current_index == len(courses):  # If all courses are assigned, return the solution
+            return assigned_courses
+
+        course = courses[current_index]
+        room = course[6]
+        start_time = course[4]
+        end_time = course[5]
+
+        # Check if the room is available at this time
+        if room not in available_times:
+            available_times[room] = []
+
+        # Try to assign the course
+        for (existing_start, existing_end) in available_times[room]:
+            if not (end_time <= existing_start or start_time >= existing_end):  # Conflict found
+                return None  # No valid assignment, need to backtrack
+
+        # No conflict, assign the course
+        available_times[room].append((start_time, end_time))
+        assigned_courses.append(course)
+
+        # Recur to assign the next course
+        result = backtrack(courses, current_index + 1, assigned_courses, available_times)
+        if result:
+            return result
+
+        # Backtrack if no valid assignment was found
+        available_times[room].remove((start_time, end_time))
+        assigned_courses.remove(course)
+        return None
+
+    # Start backtracking from the first course
+    assigned_courses = []
+    available_times = {}
+    return backtrack(selected_courses, 0, assigned_courses, available_times)
+
 
 
 @app.route('/', methods=['GET'])
@@ -212,7 +347,6 @@ def course_schedule():
     except Exception as e:
         flash(f"An unexpected error occurred: {e}", "danger")
         return render_template('course_schedule.html', grouped_courses_by_day={}, selected_courses=[], conflicts={})
-
 
 
 

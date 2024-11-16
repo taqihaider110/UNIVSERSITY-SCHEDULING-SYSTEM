@@ -3,13 +3,133 @@
 {% block title %}Resolve Course Conflicts{% endblock %}
 
 {% block content %}
-    <h1 class="text-center text-primary mb-5">Resolve Course Conflicts</h1>
+    <div class="container py-5">
+        <h1 class="text-center text-primary mb-5">Resolve Course Conflicts</h1>
 
-    <div class="container">
-        <h3>Greedy Algorithm Result:</h3>
-        <p>{{ greedy_result }}</p>
+        <div class="row">
+            <!-- Greedy Algorithm Result Section -->
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm rounded">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="card-title">Greedy Algorithm Result</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">The Greedy Algorithm resolves conflicts by selecting the first available room/time slot for each course. Below are the results:</p>
+                        {% if greedy_result['resolved_courses'] %}
+                            <div class="alert alert-info" role="alert">
+                                <strong>Resolved Courses:</strong>
+                                <ul>
+                                    {% for course in greedy_result['resolved_courses'] %}
+                                        <li>
+                                            <strong>{{ course.course_title }}</strong> ({{ course.teacher_name }})
+                                            <br>Time: {{ course.class_start_time }} - {{ course.class_end_time }} | Room: {{ course.room }}
+                                            <br>Day: {{ course.day_of_week }}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% else %}
+                            <p>No resolved courses found in the greedy algorithm result. Please check the scheduling conflicts again or try other algorithms.</p>
+                        {% endif %}
+                        
+                        {% if greedy_result['unresolved_courses'] %}
+                            <div class="alert alert-danger" role="alert">
+                                <strong>Unresolved Courses:</strong>
+                                <ul>
+                                    {% for course in greedy_result['unresolved_courses'] %}
+                                        <li>
+                                            <strong>{{ course.course_title }}</strong> ({{ course.teacher_name }})
+                                            <br>Time: {{ course.class_start_time }} - {{ course.class_end_time }} | Room: {{ course.room }}
+                                            <br>Day: {{ course.day_of_week }}
+                                            <br><small class="text-danger">{{ course.conflict }}</small>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% else %}
+                            <p>No unresolved courses found in the greedy algorithm result. All courses have been scheduled successfully.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
 
-        <h3>Backtracking Algorithm Result:</h3>
-        <p>{{ backtracking_result }}</p>
+            <!-- Backtracking Algorithm Result Section -->
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm rounded">
+                    <div class="card-header bg-success text-white">
+                        <h3 class="card-title">Backtracking Algorithm Result</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">The Backtracking Algorithm tries to assign time slots recursively and backtracks if a conflict arises. Below are the results:</p>
+                        
+                        {% if backtracking_result %}
+                            {% if backtracking_result['resolved_courses'] %}
+                                <div class="alert alert-info" role="alert">
+                                    <strong>Resolved Courses:</strong>
+                                    <ul>
+                                        {% for course in backtracking_result['resolved_courses'] %}
+                                            <li>
+                                                <strong>{{ course.course_title }}</strong> ({{ course.teacher_name }})
+                                                <br>Time: {{ course.class_start_time }} - {{ course.class_end_time }} | Room: {{ course.room }}
+                                                <br>Day: {{ course.day_of_week }}
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% else %}
+                                <p>No resolved courses found in the backtracking algorithm result. Consider adjusting your course or room allocation.</p>
+                            {% endif %}
+                            
+                            {% if backtracking_result['unresolved_courses'] %}
+                                <div class="alert alert-danger" role="alert">
+                                    <strong>Unresolved Courses:</strong>
+                                    <ul>
+                                        {% for course in backtracking_result['unresolved_courses'] %}
+                                            <li>
+                                                <strong>{{ course.course_title }}</strong> ({{ course.teacher_name }})
+                                                <br>Time: {{ course.class_start_time }} - {{ course.class_end_time }} | Room: {{ course.room }}
+                                                <br>Day: {{ course.day_of_week }}
+                                                <br><small class="text-danger">{{ course.conflict }}</small>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% else %}
+                                <p>No unresolved courses found in the backtracking algorithm result. All courses have been successfully scheduled.</p>
+                            {% endif %}
+                        {% else %}
+                            <p>Backtracking algorithm did not provide any result. Please try again or check your input data.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-5">
+            <a href="{{ url_for('course_schedule') }}" class="btn btn-primary btn-lg">Back to Course Schedule</a>
+        </div>
     </div>
+
+    <!-- Custom CSS -->
+    <style>
+        .card {
+            transition: transform 0.3s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        .alert {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        h3.card-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        .btn-lg {
+            padding: 15px 25px;
+            font-size: 1.1rem;
+        }
+    </style>
 {% endblock %}
