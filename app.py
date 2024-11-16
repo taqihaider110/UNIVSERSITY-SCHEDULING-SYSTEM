@@ -18,7 +18,7 @@ def get_db_connection():
         return None
 
 
-# Helper function to validate course times
+# Validate course start and end times
 def validate_times(class_start_time, class_end_time):
     """Validates start time and end time of the course."""
     try:
@@ -33,19 +33,67 @@ def validate_times(class_start_time, class_end_time):
 
 # Helper function to check for conflicts in scheduling.
 def check_schedule_conflict(conn, teacher_name, day_of_week, start_time, end_time, room):
-    """Helper function to check for scheduling conflicts."""
+    """Check scheduling conflicts for teacher, room, slot overlaps, and days."""
     cursor = conn.cursor()
+    
+    # SQL query to check for conflicts based on combinations of criteria
     cursor.execute("""
-        SELECT * FROM course_schedule WHERE 
-        (teacher_name = ? AND day_of_week = ? AND 
-        ((class_start_time < ? AND class_end_time > ?) OR 
-         (class_start_time < ? AND class_end_time > ?)))
-        OR (room = ? AND day_of_week = ? AND
-        ((class_start_time < ? AND class_end_time > ?) OR 
-         (class_start_time < ? AND class_end_time > ?)))
-    """, (teacher_name, day_of_week, start_time, start_time, end_time, end_time,
+        SELECT * FROM course_schedule WHERE
+        (
+            -- Case 1: Teacher conflict
+            teacher_name = ? AND day_of_week = ? AND
+            (
+                (class_start_time < ? AND class_end_time > ?) OR  -- New course starts before existing course ends
+                (class_start_time < ? AND class_end_time > ?)     -- New course ends after existing course starts
+            )
+        )
+        OR 
+        (
+            -- Case 2: Room conflict (same room, same day, overlapping time)
+            room = ? AND day_of_week = ? AND
+            (
+                (class_start_time < ? AND class_end_time > ?) OR  -- New course starts before existing course ends
+                (class_start_time < ? AND class_end_time > ?)     -- New course ends after existing course starts
+            )
+        )
+    """, (teacher_name, day_of_week, start_time, start_time, end_time, end_time, 
           room, day_of_week, start_time, start_time, end_time, end_time))
-    return cursor.fetchall()
+    
+    conflicts = cursor.fetchall()
+    return conflicts
+   
+
+
+
+@app.route('/resolve_conflicts', methods=['POST'])
+def resolve_conflicts():
+    selected_courses_ids = session.get('selected_courses', [])
+    
+    if not selected_courses_ids:
+        flash("No courses selected yet.", "info")
+        return redirect(url_for('course_schedule'))
+
+    # Greedy algorithm
+    greedy_result = resolve_conflicts_greedy(selected_courses_ids)
+
+    # Backtracking algorithm
+    backtracking_result = resolve_conflicts_backtracking(selected_courses_ids)
+
+    return render_template('resolve_conflicts.html', greedy_result=greedy_result, backtracking_result=backtracking_result)
+
+
+# Greedy Algorithm: Resolves conflicts by selecting the first available room/time slot.
+def resolve_conflicts_greedy(selected_courses_ids):
+    # Implement the greedy conflict resolution algorithm
+    # Resolve conflicts by taking the first available slot.
+    return "Greedy result logic here"
+
+# Backtracking Algorithm: Recursively checks and assigns the next available time slot 
+# while undoing previous assignments if a conflict arises.
+def resolve_conflicts_backtracking(selected_courses_ids):
+    # Implement the backtracking conflict resolution algorithm
+    # Try all possibilities and backtrack if necessary.
+    return "Backtracking result logic here"
 
 
 @app.route('/', methods=['GET'])
@@ -101,7 +149,7 @@ def course_list():
 
 
 # Route For Course Selected
-@app.route('/course_schedule', methods=['GET'])
+@app.route('/course_schedule', methods=['GET', 'POST'])
 def course_schedule():
     try:
         # Fetch selected course IDs from the session
@@ -110,28 +158,18 @@ def course_schedule():
         # Check if any courses were selected
         if not selected_courses_ids:
             flash("No courses selected yet.", "info")
-            return render_template('course_schedule.html', grouped_courses_by_day={}, selected_courses=[])
+            return render_template('course_schedule.html', grouped_courses_by_day={}, selected_courses=[], conflicts={})
 
-        # Connect to the database
+        # Connect to the database and get course details
         with get_db_connection() as conn:
-            if conn:
-                cursor = conn.cursor()
-                # Prepare the SQL query for selected courses
-                query = "SELECT id, teacher_name, course_title, day_of_week, class_start_time, class_end_time, room FROM course_schedule WHERE id IN ({})".format(
-                    ','.join('?' for _ in selected_courses_ids)
-                )
-                cursor.execute(query, tuple(selected_courses_ids))
-                selected_courses = cursor.fetchall()
+            cursor = conn.cursor()
+            query = "SELECT id, teacher_name, course_title, day_of_week, class_start_time, class_end_time, room FROM course_schedule WHERE id IN ({})".format(
+                ','.join('?' for _ in selected_courses_ids)
+            )
+            cursor.execute(query, tuple(selected_courses_ids))
+            selected_courses = cursor.fetchall()
 
-                # If no courses are found in the database
-                if not selected_courses:
-                    flash("The selected courses were not found in the database.", "warning")
-                    return render_template('course_schedule.html', grouped_courses_by_day={}, selected_courses=[])
-
-            else:
-                raise sqlite3.Error("Database connection failed")
-
-        # Group courses by day of the week for better display
+        # Group courses by day for better organization
         grouped_courses_by_day = {}
         for course in selected_courses:
             day = course[3]  # 'day_of_week'
@@ -139,20 +177,42 @@ def course_schedule():
                 grouped_courses_by_day[day] = []
             grouped_courses_by_day[day].append(course)
 
-        # Sort courses within each day by start time for clarity
-        for day in grouped_courses_by_day:
-            grouped_courses_by_day[day].sort(key=lambda x: x[4])  # Sort by 'class_start_time'
+        # Initialize an empty dict to store conflicts
+        conflicts = {}
 
-        # Pass selected courses to the template for display
-        return render_template('course_schedule.html', grouped_courses_by_day=grouped_courses_by_day, selected_courses=selected_courses)
+        # Check for conflicts
+        for day, courses in grouped_courses_by_day.items():
+            day_conflicts = []
+            for i, course in enumerate(courses):
+                for j, other_course in enumerate(courses):
+                    if i >= j:
+                        continue
+                    # Check for time and room conflicts
+                    if (course[4] < other_course[5] and course[5] > other_course[4]):  # Time overlap
+                        if course[6] == other_course[6]:  # Room conflict only if they are in the same room
+                            conflict_details = {
+                                'course_name': course[2],
+                                'teacher_name': course[1],
+                                'conflicting_course_name': other_course[2],
+                                'conflicting_teacher_name': other_course[1],
+                                'conflicting_start_time': other_course[4],
+                                'conflicting_end_time': other_course[5],
+                                'conflicting_room': other_course[6],
+                            }
+                            day_conflicts.append(conflict_details)
+            if day_conflicts:
+                conflicts[day] = day_conflicts
+
+        return render_template('course_schedule.html', grouped_courses_by_day=grouped_courses_by_day, selected_courses=selected_courses, conflicts=conflicts)
 
     except sqlite3.Error as e:
         flash(f"Error fetching selected courses: {e}", "danger")
-        return render_template('course_schedule.html', grouped_courses_by_day={}, selected_courses=[])
+        return render_template('course_schedule.html', grouped_courses_by_day={}, selected_courses=[], conflicts={})
 
     except Exception as e:
         flash(f"An unexpected error occurred: {e}", "danger")
-        return render_template('course_schedule.html', grouped_courses_by_day={}, selected_courses=[])
+        return render_template('course_schedule.html', grouped_courses_by_day={}, selected_courses=[], conflicts={})
+
 
 
 

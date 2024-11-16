@@ -30,6 +30,25 @@
                             {% endfor %}
                         </tbody>
                     </table>
+                    
+                    {% if conflicts[day] %}
+                        <div class="alert alert-danger mt-4">
+                            <h5>Conflicts Detected for {{ day }}</h5>
+                            <ul>
+                                {% for conflict in conflicts[day] %}
+                                    <li>
+                                        <strong>{{ conflict.course_name }}</strong> ({{ conflict.teacher_name }}) conflicts with 
+                                        <strong>{{ conflict.conflicting_course_name }}</strong> ({{ conflict.conflicting_teacher_name }}) 
+                                        from {{ conflict.conflicting_start_time }} to {{ conflict.conflicting_end_time }} in Room {{ conflict.conflicting_room }}.
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                            <form method="POST" action="{{ url_for('resolve_conflicts') }}">
+                                <button type="submit" class="btn btn-warning">Resolve Conflicts</button>
+                            </form>
+                        </div>
+                    {% endif %}
+                    
                 {% endfor %}
             {% else %}
                 <p class="text-center text-danger">No courses selected or available.</p>
