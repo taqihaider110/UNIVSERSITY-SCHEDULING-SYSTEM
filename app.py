@@ -272,6 +272,10 @@ def edit_course(id):
                 cursor.execute("SELECT * FROM course_schedule WHERE id = ?", (id,))
                 course = cursor.fetchone()
 
+                if course is None:
+                    flash("Course not found.", "danger")
+                    return redirect(url_for('course_list'))
+
                 if request.method == 'POST':
                     teacher_name = request.form['teacher_name']
                     course_code = request.form['course_code']
@@ -290,7 +294,7 @@ def edit_course(id):
                     conn.commit()
 
                     flash("Course updated successfully.", "success")
-                    return redirect(url_for('course_schedule'))
+                    return redirect(url_for('course_list'))
                 else:
                     return render_template('edit_course.html', course=course)
             else:
@@ -298,11 +302,11 @@ def edit_course(id):
 
     except sqlite3.Error as e:
         flash(f"Error updating course: {e}", "danger")
-        return redirect(url_for('course_schedule'))
+        return redirect(url_for('course_list'))
 
 
 # Route to delete a course
-@app.route('/delete/<int:id>', methods=['POST'])
+@app.route('/delete/<int:id>', methods=['GET',])
 def delete_course(id):
     try:
         with get_db_connection() as conn:
@@ -312,11 +316,11 @@ def delete_course(id):
                 conn.commit()
 
                 flash("Course deleted successfully.", "success")
-                return redirect(url_for('course_schedule'))
+                return redirect(url_for('course_list'))
 
     except sqlite3.Error as e:
         flash(f"Error deleting course: {e}", "danger")
-        return redirect(url_for('course_schedule'))
+        return redirect(url_for('course_list'))
 
     
 # Start the Flask application
