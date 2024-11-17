@@ -99,73 +99,96 @@ def resolve_conflicts():
 
 
 
-
 # Greedy Algorithm: Resolves conflicts by selecting the first available room/time slot.
 def resolve_conflicts_greedy(selected_courses_ids):
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        query = "SELECT id, teacher_name, course_title, day_of_week, class_start_time, class_end_time, room FROM course_schedule WHERE id IN ({})".format(
+        query = "SELECT id, teacher_name, course_title, day_of_week, class_start_time, class_end_time,"
+        "room FROM course_schedule WHERE id IN ({})".format(
             ','.join('?' for _ in selected_courses_ids)
         )
         cursor.execute(query, tuple(selected_courses_ids))
         selected_courses = cursor.fetchall()
 
-    # Group courses by day for easier conflict checking
-    grouped_courses_by_day = {}
-    for course in selected_courses:
-        day = course[3]  # 'day_of_week'
-        if day not in grouped_courses_by_day:
-            grouped_courses_by_day[day] = []
-        grouped_courses_by_day[day].append(course)
+    # Map weekdays to numeric values
+    DAY_MAP = {
+        'Monday': 1,
+        'Tuesday': 2,
+        'Wednesday': 3,
+        'Thursday': 4,
+        'Friday': 5,
+        'Saturday': 6,
+        'Sunday': 7
+    }
 
-    # Try to resolve conflicts greedily
+    # Sort courses by day_of_week (numeric) and then by start_time
+    selected_courses.sort(key=lambda x: (DAY_MAP[x[3]], x[4]))  # Convert day_of_week to numeric using DAY_MAP
+
     resolved_courses = []
-    unresolved_courses = []  # Courses that couldn't be scheduled due to conflicts
-    for day, courses in grouped_courses_by_day.items():
-        available_times = {}  # Dictionary to track available time slots for each room
+    unresolved_courses = []
 
-        for course in courses:
-            room = course[6]
-            start_time = course[4]
-            end_time = course[5]
+    # Dictionary to track room bookings: {day: {room: [(start_time, end_time), ...]}}
+    room_availability = {day: {room: [] for room in range(1, 6)} for day in range(1, 8)}
 
-            # Check if the room is available at this time
-            if room not in available_times:
-                available_times[room] = []
+    for course in selected_courses:
+        course_id, teacher_name, course_title, day_of_week, start_time, end_time, room = course
+        day_of_week_numeric = DAY_MAP[day_of_week]  # Convert day_of_week to numeric
 
-            conflict = False
-            for (existing_start, existing_end) in available_times[room]:
-                # Check if there is a time conflict (i.e., the times overlap)
-                if not (end_time <= existing_start or start_time >= existing_end):
-                    conflict = True
-                    break
+        conflict = False
 
-            # If no conflict, assign the room/time slot
-            if not conflict:
-                available_times[room].append((start_time, end_time))
-                resolved_courses.append({
-                    'id': course[0],
-                    'course_title': course[2],
-                    'teacher_name': course[1],
-                    'day_of_week': course[3],
-                    'class_start_time': course[4],
-                    'class_end_time': course[5],
-                    'room': course[6]
-                })
-            else:
-                # If a conflict occurs, add it to unresolved_courses
+        # Check if room is available for the given time slot
+        for existing_start, existing_end in room_availability[day_of_week_numeric][room]:
+            if not (end_time <= existing_start or start_time >= existing_end):  # Conflict
+                conflict = True
+                break
+
+        if conflict:
+            # Try to resolve conflict by selecting the first available alternative room
+            found_alternative = False
+            for alt_room in range(1, 6):  # Room 1-5
+                if alt_room != room:  # Skip the same room
+                    for existing_start, existing_end in room_availability[day_of_week_numeric][alt_room]:
+                        if not (end_time <= existing_start or start_time >= existing_end):
+                            break
+                    else:
+                        # No conflict, assign this course to the alternative room
+                        room_availability[day_of_week_numeric][alt_room].append((start_time, end_time))
+                        resolved_courses.append({
+                            'id': course_id,
+                            'course_title': course_title,
+                            'teacher_name': teacher_name,
+                            'day_of_week': day_of_week,
+                            'class_start_time': start_time,
+                            'class_end_time': end_time,
+                            'room': alt_room
+                        })
+                        found_alternative = True
+                        break
+
+            if not found_alternative:
                 unresolved_courses.append({
-                    'id': course[0],
-                    'course_title': course[2],
-                    'teacher_name': course[1],
-                    'day_of_week': course[3],
-                    'class_start_time': course[4],
-                    'class_end_time': course[5],
-                    'room': course[6],
-                    'conflict': "Room already assigned for this time slot"
+                    'id': course_id,
+                    'course_title': course_title,
+                    'teacher_name': teacher_name,
+                    'day_of_week': day_of_week,
+                    'class_start_time': start_time,
+                    'class_end_time': end_time,
+                    'room': room,
+                    'conflict': "No available room for this time slot"
                 })
+        else:
+            # No conflict, assign the course to the room
+            room_availability[day_of_week_numeric][room].append((start_time, end_time))
+            resolved_courses.append({
+                'id': course_id,
+                'course_title': course_title,
+                'teacher_name': teacher_name,
+                'day_of_week': day_of_week,
+                'class_start_time': start_time,
+                'class_end_time': end_time,
+                'room': room
+            })
 
-    # Return both resolved and unresolved courses to handle them separately in the view
     return {
         'resolved_courses': resolved_courses,
         'unresolved_courses': unresolved_courses
@@ -173,8 +196,9 @@ def resolve_conflicts_greedy(selected_courses_ids):
 
 
 
-# Backtracking Algorithm: Recursively checks and assigns the next available time slot 
-# while undoing previous assignments if a conflict arises.
+
+
+# Backtracking Algorithm: Handles conflicts through recursive assignment and backtracking.
 def resolve_conflicts_backtracking(selected_courses_ids):
     with get_db_connection() as conn:
         cursor = conn.cursor()
@@ -228,6 +252,7 @@ def resolve_conflicts_backtracking(selected_courses_ids):
     assigned_courses = []
     available_times = {}
     return backtrack(selected_courses, 0, assigned_courses, available_times)
+
 
 
 
