@@ -100,13 +100,17 @@ def resolve_conflicts():
 
 
 # Greedy Algorithm: Resolves conflicts by selecting the first available room/time slot.
+# Greedy Algorithm: Resolves conflicts by selecting the first available room/time slot.
 def resolve_conflicts_greedy(selected_courses_ids):
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        query = "SELECT id, teacher_name, course_title, day_of_week, class_start_time, class_end_time,"
-        "room FROM course_schedule WHERE id IN ({})".format(
-            ','.join('?' for _ in selected_courses_ids)
+        
+        # Ensure the query is properly constructed with placeholders for selected_courses_ids
+        query = "SELECT id, teacher_name, course_title, day_of_week, class_start_time, class_end_time, room FROM course_schedule WHERE id IN ({})".format(
+            ','.join(['?'] * len(selected_courses_ids))  # Ensure the right number of placeholders
         )
+
+        # Execute the query with the tuple of selected_courses_ids
         cursor.execute(query, tuple(selected_courses_ids))
         selected_courses = cursor.fetchall()
 
@@ -128,6 +132,7 @@ def resolve_conflicts_greedy(selected_courses_ids):
     unresolved_courses = []
 
     # Dictionary to track room bookings: {day: {room: [(start_time, end_time), ...]}}
+
     room_availability = {day: {room: [] for room in range(1, 6)} for day in range(1, 8)}
 
     for course in selected_courses:
@@ -193,7 +198,6 @@ def resolve_conflicts_greedy(selected_courses_ids):
         'resolved_courses': resolved_courses,
         'unresolved_courses': unresolved_courses
     }
-
 
 
 
