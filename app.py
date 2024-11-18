@@ -123,46 +123,47 @@ def resolve_conflicts():
 
 
 def backtrack(courses, index, assigned_courses, available_times):
-    # Base case: if all courses have been checked, return the assigned courses
+    # Base case: if all courses have been considered, return the current assignment
     if index >= len(courses):
-        return assigned_courses
-    
+        return assigned_courses[:]
+
     current_course = courses[index]
     day = current_course[3]  # 'day_of_week'
     start_time = current_course[4]  # 'class_start_time'
     end_time = current_course[5]  # 'class_end_time'
-    
-    # Ensure availability for the day is tracked
+    room = current_course[6]  # 'room'
+
+    # Ensure available_times for the day is initialized
     if day not in available_times:
         available_times[day] = []
 
-    # Check if current course conflicts with assigned courses on the same day
+    # Check for conflicts only in the same room
     conflict = False
     for assigned_course in available_times[day]:
         assigned_start = assigned_course[4]
         assigned_end = assigned_course[5]
+        assigned_room = assigned_course[6]
 
-        # Check for time overlap
-        if not (end_time <= assigned_start or start_time >= assigned_end):
+        # Check for time overlap only if the room is the same
+        if room == assigned_room and not (end_time <= assigned_start or start_time >= assigned_end):
             conflict = True
             break
-    
-    # If no conflict, try to assign this course and continue
+
+    # If no conflict, try adding the course
     if not conflict:
-        # Add to assigned courses and update available times
         assigned_courses.append(current_course)
         available_times[day].append(current_course)
-        
-        # Recursively call backtrack for the next course
+
+        # Continue with the next course
         result = backtrack(courses, index + 1, assigned_courses, available_times)
-        if result:  # If a valid schedule was found
+        if result:  # Valid schedule found
             return result
-        
-        # Backtrack: remove the current course and try the next possibility
+
+        # Backtrack: remove the current course and try the next option
         assigned_courses.pop()
         available_times[day].remove(current_course)
-    
-    # Try skipping the current course and continue with the next one
+
+    # Try skipping the current course and proceed to the next
     return backtrack(courses, index + 1, assigned_courses, available_times)
 
 def resolve_conflicts_backtracking(selected_courses_ids):
@@ -174,10 +175,10 @@ def resolve_conflicts_backtracking(selected_courses_ids):
         cursor.execute(query, tuple(selected_courses_ids))
         selected_courses = cursor.fetchall()
 
-    # Sort courses for better backtracking performance (e.g., by start time or other criteria)
+    # Sort courses for better scheduling (e.g., by day and start time)
     selected_courses.sort(key=lambda x: (x[3], x[4]))  # Sort by 'day_of_week' and 'class_start_time'
 
-    # Initiate backtracking with empty structures
+    # Initiate backtracking
     assigned_courses = []
     available_times = {}
     resolved_courses = backtrack(selected_courses, 0, assigned_courses, available_times)
@@ -196,6 +197,7 @@ def resolve_conflicts_backtracking(selected_courses_ids):
         'resolved_courses': resolved_courses,
         'unresolved_courses': unresolved_courses,
     }
+
 
 # Greedy Algorithm: Resolves conflicts by selecting the first available room/time slot.
 def resolve_conflicts_greedy(selected_courses_ids):
