@@ -120,102 +120,51 @@ def resolve_conflicts():
     return render_template('resolve_conflicts.html', greedy_result=greedy_result, backtracking_result=backtracking_result)
 
 
-def resolve_conflict(course, available_rooms, available_times):
-    """
-    Try to resolve a conflict by either changing the room or adjusting times.
-    """
-    room = course[6]
-    start_time = datetime.strptime(course[4], "%H:%M")  # Convert to datetime object
-    end_time = datetime.strptime(course[5], "%H:%M")  # Convert to datetime object
-
-    # Try moving the course to another available room if there's a conflict in the current room
-    for available_room in available_rooms:
-        if available_room != room:
-            # Check if the new room is available at the same time
-            if not any(
-                existing_start <= end_time and existing_end >= start_time
-                for existing_start, existing_end in available_times.get(available_room, [])
-            ):
-                # No conflict, so assign the course to this room
-                return available_room, start_time, end_time
-
-    # Try adjusting the course times (e.g., shifting by a small time gap)
-    for time_shift in range(5, 30, 5):  # Try shifting time in 5-minute intervals
-        shifted_start = start_time + timedelta(minutes=time_shift)  # Add time_shift in minutes
-        shifted_end = end_time + timedelta(minutes=time_shift)  # Add time_shift in minutes
-
-        # Check if the new times are valid
-        if not any(
-            existing_start <= shifted_end and existing_end >= shifted_start
-            for existing_start, existing_end in available_times.get(room, [])
-        ):
-            return room, shifted_start, shifted_end
-
-    return None, None, None  # If no resolution was found
 
 
-
-def backtrack(courses, current_index, assigned_courses, available_times):
-    if current_index == len(courses):  # If all courses are assigned, return the solution
-        print("All courses successfully assigned.")
+def backtrack(courses, index, assigned_courses, available_times):
+    # Base case: if all courses have been checked, return the assigned courses
+    if index >= len(courses):
         return assigned_courses
+    
+    current_course = courses[index]
+    day = current_course[3]  # 'day_of_week'
+    start_time = current_course[4]  # 'class_start_time'
+    end_time = current_course[5]  # 'class_end_time'
+    
+    # Ensure availability for the day is tracked
+    if day not in available_times:
+        available_times[day] = []
 
-    course = courses[current_index]
-    room = course[6]
-    start_time = datetime.strptime(course[4], "%H:%M")  # Convert start_time to datetime object
-    end_time = datetime.strptime(course[5], "%H:%M")  # Convert end_time to datetime object
+    # Check if current course conflicts with assigned courses on the same day
+    conflict = False
+    for assigned_course in available_times[day]:
+        assigned_start = assigned_course[4]
+        assigned_end = assigned_course[5]
 
-    # Check if the room is available at this time
-    if room not in available_times:
-        available_times[room] = []
+        # Check for time overlap
+        if not (end_time <= assigned_start or start_time >= assigned_end):
+            conflict = True
+            break
+    
+    # If no conflict, try to assign this course and continue
+    if not conflict:
+        # Add to assigned courses and update available times
+        assigned_courses.append(current_course)
+        available_times[day].append(current_course)
+        
+        # Recursively call backtrack for the next course
+        result = backtrack(courses, index + 1, assigned_courses, available_times)
+        if result:  # If a valid schedule was found
+            return result
+        
+        # Backtrack: remove the current course and try the next possibility
+        assigned_courses.pop()
+        available_times[day].remove(current_course)
+    
+    # Try skipping the current course and continue with the next one
+    return backtrack(courses, index + 1, assigned_courses, available_times)
 
-    # Debug: Check if the room is available
-    print(f"Checking room availability for {course[2]} in Room {room} from {start_time} to {end_time}")
-
-    # Check if the course already has a valid assignment
-    if not any(
-        existing_start <= end_time and existing_end >= start_time
-        for existing_start, existing_end in available_times.get(room, [])
-    ):
-        available_times[room].append((start_time, end_time))  # No conflict, assign the course
-        assigned_courses.append(course)
-        print(f"Assigned {course[2]} to {room} at {start_time} - {end_time}")
-        result = backtrack(courses, current_index + 1, assigned_courses, available_times)
-        if result:
-            return result  # Return successful assignment
-
-        # Backtrack if no valid assignment found
-        print(f"Backtracking after failing to assign {course[2]} to {room} at {start_time} - {end_time}")
-        available_times[room].remove((start_time, end_time))
-        assigned_courses.remove(course)
-
-    # Resolve conflicts (try moving to a different room or shifting time)
-    new_room, new_start_time, new_end_time = resolve_conflict(course, available_times.keys(), available_times)
-    if new_room is None:
-        print(f"Could not resolve conflict for course {course[2]}")
-        return None  # No valid assignment found, need to backtrack
-
-    # If conflict is resolved, update course details and continue
-    course = course[:6] + (new_room,)  # Replace the old room with the new one
-    start_time = new_start_time
-    end_time = new_end_time
-
-    available_times[new_room].append((start_time, end_time))
-    assigned_courses.append(course)
-
-    print(f"Assigned {course[2]} to Room {new_room} at {start_time} - {end_time}")
-    result = backtrack(courses, current_index + 1, assigned_courses, available_times)
-    if result:
-        return result
-
-    # Backtrack if no valid assignment found
-    available_times[new_room].remove((start_time, end_time))
-    assigned_courses.remove(course)
-    print(f"Backtracking after failed assignment of {course[2]} to {new_room} at {start_time} - {end_time}")
-    return None
-
-
-# Backtracking function to resolve conflicts for selected courses
 def resolve_conflicts_backtracking(selected_courses_ids):
     with get_db_connection() as conn:
         cursor = conn.cursor()
@@ -225,26 +174,20 @@ def resolve_conflicts_backtracking(selected_courses_ids):
         cursor.execute(query, tuple(selected_courses_ids))
         selected_courses = cursor.fetchall()
 
-    # Group courses by day for easier conflict checking
-    grouped_courses_by_day = {}
-    for course in selected_courses:
-        day = course[3]  # 'day_of_week'
-        if day not in grouped_courses_by_day:
-            grouped_courses_by_day[day] = []
-        grouped_courses_by_day[day].append(course)
+    # Sort courses for better backtracking performance (e.g., by start time or other criteria)
+    selected_courses.sort(key=lambda x: (x[3], x[4]))  # Sort by 'day_of_week' and 'class_start_time'
 
-    # Start backtracking from the first course
+    # Initiate backtracking with empty structures
     assigned_courses = []
     available_times = {}
     resolved_courses = backtrack(selected_courses, 0, assigned_courses, available_times)
 
-    # Return a dictionary with resolved and unresolved courses
+    # Prepare the response dictionary
     unresolved_courses = [course for course in selected_courses if course not in resolved_courses]
-    
-    # In case no courses were resolved, trigger an alternative action
+
     if not resolved_courses:
         return {
-            'resolved_courses': resolved_courses,
+            'resolved_courses': [],
             'unresolved_courses': unresolved_courses,
             'error_message': "No conflicts could be resolved. Please review your input data."
         }
@@ -253,7 +196,6 @@ def resolve_conflicts_backtracking(selected_courses_ids):
         'resolved_courses': resolved_courses,
         'unresolved_courses': unresolved_courses,
     }
-
 
 # Greedy Algorithm: Resolves conflicts by selecting the first available room/time slot.
 def resolve_conflicts_greedy(selected_courses_ids):
