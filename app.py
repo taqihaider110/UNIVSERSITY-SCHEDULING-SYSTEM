@@ -10,7 +10,7 @@ app.secret_key = 'your_secret_key'  # Required for flash messages
 def get_db_connection():
     """Establishes and returns a connection to the SQLite database."""
     try:
-        conn = sqlite3.connect('university_schedule.db')  # Connect to the database file
+        conn = sqlite3.connect('university_schedule.db')
         conn.row_factory = sqlite3.Row  # Allows rows to behave like dictionaries
         return conn
     except sqlite3.Error as e:
@@ -30,7 +30,7 @@ def validate_times(class_start_time, class_end_time):
         return None
     except ValueError:
         return "Invalid time format. Please use HH:MM format."
-
+    
 
 # Helper function to check for conflicts in scheduling.
 def check_schedule_conflict(conn, teacher_name, day_of_week, start_time, end_time, room):
@@ -117,6 +117,50 @@ def resolve_conflicts():
     return render_template('resolve_conflicts.html', greedy_result=greedy_result, backtracking_result=backtracking_result)
 
 
+def resolve_conflicts_backtracking(selected_courses_ids):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        query = "SELECT id, teacher_name, course_title, day_of_week, class_start_time, class_end_time, room FROM course_schedule WHERE id IN ({})".format(
+            ','.join('?' for _ in selected_courses_ids)
+        )
+        cursor.execute(query, tuple(selected_courses_ids))
+        selected_courses = cursor.fetchall()
+
+    # Convert sqlite3.Row objects to dictionaries so they are mutable
+    selected_courses = [dict(course) for course in selected_courses]
+
+    # Sort courses for better scheduling (e.g., by day and start time)
+    selected_courses.sort(key=lambda x: (x['day_of_week'], x['class_start_time']))
+
+    # Initiate backtracking
+    assigned_courses = []
+    available_times = {}
+    conflict_details = {}
+    resolved_courses = backtrack(selected_courses, 0, assigned_courses, available_times, conflict_details=conflict_details)
+
+    # Prepare the response dictionary
+    unresolved_courses = [course for course in selected_courses if course['id'] not in [resolved_course['id'] for resolved_course in resolved_courses]]
+
+    # Adding conflict details to unresolved courses
+    unresolved_courses_with_conflicts = []
+    for course in unresolved_courses:
+        conflict_info = conflict_details.get(course['id'], {
+            'conflicting_course': None,
+            'conflicting_day': None,
+            'conflicting_room': None,
+            'conflicting_time': None,
+            'conflict_reason': None
+        })
+        unresolved_courses_with_conflicts.append({
+            'course': course,
+            'conflict_info': conflict_info
+        })
+
+    return {
+        'resolved_courses': resolved_courses,
+        'unresolved_courses': unresolved_courses_with_conflicts,
+    }
+
 
 def check_conflict(course1, course2):
     # Check for time overlap
@@ -134,11 +178,10 @@ def check_conflict(course1, course2):
     elif room_conflict:
         conflict_reason = "Room"
 
-    # If both time and room overlap, it's a conflict
     return time_conflict or room_conflict, conflict_reason
 
 
-def backtrack(courses, index, assigned_courses, available_times, conflict_resolution_step=0, conflict_details=None):
+def backtrack(courses, index, assigned_courses, available_times, conflict_details=None, conflict_resolution_step=0):
     if conflict_details is None:
         conflict_details = {}
 
@@ -173,7 +216,7 @@ def backtrack(courses, index, assigned_courses, available_times, conflict_resolu
             }
             break
 
-    # If no conflict, add the course
+    # If no conflict, mark course as resolved and continue
     if not conflict:
         assigned_courses.append(current_course)
         if room not in available_times[day]:
@@ -188,29 +231,49 @@ def backtrack(courses, index, assigned_courses, available_times, conflict_resolu
         assigned_courses.pop()
         available_times[day][room].remove(current_course)
 
-    # Conflict resolution: attempt room change or time shift
+    # Conflict resolution: attempt room change or time shift if conflict was found
     if conflict:
         # Room change (step 0)
         if conflict_resolution_step == 0:
             available_rooms = ["Room 1", "Room 2", "Room 3", "Room 4"]
             for new_room in available_rooms:
                 if new_room != room:
-                    # Before changing the room, safely check if the course is in the current room and remove it
+                    # Safely check and remove current course if needed
                     if current_course in available_times[day].get(room, []):
                         available_times[day][room].remove(current_course)
 
-                    # Change the room and add to available_times
+                    # Change the room and recheck for conflicts
                     current_course['room'] = new_room
-                    
-                    if new_room not in available_times[day]:
-                        available_times[day][new_room] = []
-                    available_times[day][new_room].append(current_course)
+                    if current_course['id'] in conflict_details:
+                        del conflict_details[current_course['id']]  # Clear previous conflict info
 
-                    result = backtrack(courses, index + 1, assigned_courses, available_times, conflict_resolution_step=1, conflict_details=conflict_details)
-                    if result:
-                        return result
+                    # Recalculate conflicts with the new room
+                    conflict = False
+                    for assigned_course in available_times[day].get(new_room, []):
+                        has_conflict, reason = check_conflict(current_course, assigned_course)
+                        if has_conflict:
+                            conflict = True
+                            conflict_reason = reason
+                            conflict_details[current_course['id']] = {
+                                'conflicting_course': assigned_course['course_title'],
+                                'conflicting_day': assigned_course['day_of_week'],
+                                'conflicting_room': assigned_course['room'],
+                                'conflicting_time': f"{assigned_course['class_start_time']} - {assigned_course['class_end_time']}",
+                                'conflict_reason': conflict_reason
+                            }
+                            break
 
-                    # If failed, revert to the original room
+                    if not conflict:
+                        # Add course to the new room and proceed
+                        if new_room not in available_times[day]:
+                            available_times[day][new_room] = []
+                        available_times[day][new_room].append(current_course)
+
+                        result = backtrack(courses, index + 1, assigned_courses, available_times, conflict_details=conflict_details, conflict_resolution_step=1)
+                        if result:
+                            return result
+
+                    # Revert to the original room
                     current_course['room'] = room
                     if current_course in available_times[day].get(new_room, []):
                         available_times[day][new_room].remove(current_course)
@@ -218,14 +281,15 @@ def backtrack(courses, index, assigned_courses, available_times, conflict_resolu
 
         # Time shift (step 1)
         elif conflict_resolution_step == 1:
-            # Shift the course time to a later slot after the conflict
             shifted_start_time = end_time + 1  # Shift by 1 hour
             shifted_end_time = shifted_start_time + (end_time - start_time)
 
             current_course['class_start_time'] = shifted_start_time
             current_course['class_end_time'] = shifted_end_time
 
-            # Re-check for conflicts after time shift
+            if current_course['id'] in conflict_details:
+                del conflict_details[current_course['id']]  # Clear previous conflict info
+
             conflict = False
             for assigned_course in available_times[day].get(room, []):
                 has_conflict, reason = check_conflict(current_course, assigned_course)
@@ -241,7 +305,6 @@ def backtrack(courses, index, assigned_courses, available_times, conflict_resolu
                     }
                     break
 
-            # If no conflict after time shift, update available_times with new shifted time
             if not conflict:
                 if room not in available_times[day]:
                     available_times[day][room] = []
@@ -255,54 +318,8 @@ def backtrack(courses, index, assigned_courses, available_times, conflict_resolu
             current_course['class_start_time'] = start_time
             current_course['class_end_time'] = end_time
 
-    # Finally, try skipping the current course and proceed to the next one if nothing works
-    return backtrack(courses, index + 1, assigned_courses, available_times, conflict_details=conflict_details)
-
-
-def resolve_conflicts_backtracking(selected_courses_ids):
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        query = "SELECT id, teacher_name, course_title, day_of_week, class_start_time, class_end_time, room FROM course_schedule WHERE id IN ({})".format(
-            ','.join('?' for _ in selected_courses_ids)
-        )
-        cursor.execute(query, tuple(selected_courses_ids))
-        selected_courses = cursor.fetchall()
-
-    # Convert sqlite3.Row objects to dictionaries so they are mutable
-    selected_courses = [dict(course) for course in selected_courses]
-
-    # Sort courses for better scheduling (e.g., by day and start time)
-    selected_courses.sort(key=lambda x: (x['day_of_week'], x['class_start_time']))  # Sort by 'day_of_week' and 'class_start_time'
-
-    # Initiate backtracking
-    assigned_courses = []
-    available_times = {}
-    conflict_details = {}
-    resolved_courses = backtrack(selected_courses, 0, assigned_courses, available_times, conflict_details=conflict_details)
-
-    # Prepare the response dictionary
-    unresolved_courses = [course for course in selected_courses if course['id'] not in [resolved_course['id'] for resolved_course in resolved_courses]]
-
-    # Adding conflict details to unresolved courses
-    unresolved_courses_with_conflicts = []
-    for course in unresolved_courses:
-        conflict_info = conflict_details.get(course['id'], {})
-        unresolved_courses_with_conflicts.append({
-            'course': course,
-            'conflict_info': conflict_info
-        })
-
-    if not resolved_courses:
-        return {
-            'resolved_courses': [],
-            'unresolved_courses': unresolved_courses_with_conflicts,
-            'error_message': "No conflicts could be resolved. Please review your input data."
-        }
-
-    return {
-        'resolved_courses': resolved_courses,
-        'unresolved_courses': unresolved_courses_with_conflicts,
-    }
+    # Try skipping the current course and proceed to the next
+    return backtrack(courses, index + 1, assigned_courses, available_times, conflict_details=conflict_details, conflict_resolution_step=conflict_resolution_step)
 
 
 

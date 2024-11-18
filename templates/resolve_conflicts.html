@@ -90,9 +90,9 @@
                                                 <strong>{{ unresolved['course'].course_title }}</strong> ({{ unresolved['course'].teacher_name }})<br>
                                                 Time: {{ unresolved['course'].class_start_time }} - {{ unresolved['course'].class_end_time }} | Room: {{ unresolved['course'].room }}<br>
                                                 Day: {{ unresolved['course'].day_of_week }}<br>
-                                                <strong>Conflict with:</strong> {{ unresolved['conflict_info']['conflicting_course'] }}<br>
-                                                Conflicting Time: {{ unresolved['conflict_info']['conflicting_time'] }} | Conflicting Room: {{ unresolved['conflict_info']['conflicting_room'] }}<br>
-                                                <strong>Conflict Reason:</strong> <span class="text-danger">{{ unresolved['conflict_info']['conflict_reason'] }}</span><br>
+                                                <strong>Conflict with:</strong> {{ unresolved['conflict_info']['conflicting_course'] or 'N/A' }}<br>
+                                                Conflicting Time: {{ unresolved['conflict_info']['conflicting_time'] or 'N/A' }} | Conflicting Room: {{ unresolved['conflict_info']['conflicting_room'] or 'N/A' }}<br>
+                                                <strong>Conflict Reason:</strong> <span class="text-danger">{{ unresolved['conflict_info']['conflict_reason'] or 'N/A' }}</span><br>
                                                 <small class="text-danger">Conflict detected with the above course.</small>
                                             </li>
                                         {% endfor %}
