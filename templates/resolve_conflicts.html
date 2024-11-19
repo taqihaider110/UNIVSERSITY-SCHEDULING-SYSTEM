@@ -14,7 +14,7 @@
                         <h3 class="card-title">Greedy Algorithm Result</h3>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted">The Greedy Algorithm resolves conflicts by selecting the first available room and time slot for each course. Below are the results:</p>
+                        <p class="text-muted">The Greedy Algorithm resolves conflicts by attempting to find the first available room at the original or shifted time. If no alternative room is available at the original time, it looks for another time slot or alternative room. Below are the results:</p>
                         
                         {% if greedy_result['resolved_courses'] %}
                             <div class="alert alert-info" role="alert">
@@ -30,7 +30,7 @@
                                 </ul>
                             </div>
                         {% else %}
-                            <p>No resolved courses found in the Greedy Algorithm result. Please review the scheduling conflicts or try an alternative method.</p>
+                            <p class="text-danger">No courses were resolved by the Greedy Algorithm. Please review the scheduling conflicts or try an alternative method.</p>
                         {% endif %}
 
                         {% if greedy_result['unresolved_courses'] %}
@@ -48,7 +48,7 @@
                                 </ul>
                             </div>
                         {% else %}
-                            <p>All courses have been successfully scheduled by the Greedy Algorithm.</p>
+                            <p class="text-success">All courses have been successfully scheduled by the Greedy Algorithm.</p>
                         {% endif %}
                     </div>
                 </div>
@@ -78,7 +78,7 @@
                                     </ul>
                                 </div>
                             {% else %}
-                                <p>No courses were resolved by the Backtracking Algorithm. Consider modifying the schedule or input data.</p>
+                                <p class="text-danger">No courses were resolved by the Backtracking Algorithm. Consider modifying the schedule or input data.</p>
                             {% endif %}
 
                             {% if backtracking_result['unresolved_courses'] %}
@@ -92,17 +92,16 @@
                                                 Day: {{ unresolved['course'].day_of_week }}<br>
                                                 <strong>Conflict with:</strong> {{ unresolved['conflict_info']['conflicting_course'] or 'N/A' }}<br>
                                                 Conflicting Time: {{ unresolved['conflict_info']['conflicting_time'] or 'N/A' }} | Conflicting Room: {{ unresolved['conflict_info']['conflicting_room'] or 'N/A' }}<br>
-                                                <strong>Conflict Reason:</strong> <span class="text-danger">{{ unresolved['conflict_info']['conflict_reason'] or 'N/A' }}</span><br>
-                                                <small class="text-danger">Conflict detected with the above course.</small>
+                                                <strong>Conflict Reason:</strong> <span class="text-danger">{{ unresolved['conflict_info']['conflict_reason'] or 'N/A' }}</span>
                                             </li>
                                         {% endfor %}
                                     </ul>
                                 </div>
                             {% else %}
-                                <p>All courses have been successfully scheduled by the Backtracking Algorithm.</p>
+                                <p class="text-success">All courses have been successfully scheduled by the Backtracking Algorithm.</p>
                             {% endif %}
                         {% else %}
-                            <p>The Backtracking Algorithm did not yield any results. Please verify the input data or try again.</p>
+                            <p class="text-danger">The Backtracking Algorithm did not yield any results. Please verify the input data or try again.</p>
                         {% endif %}
                     </div>
                 </div>

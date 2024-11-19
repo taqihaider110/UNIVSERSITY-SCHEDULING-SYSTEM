@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request, redirect, session, url_for, flash
 import sqlite3
-from datetime import datetime
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
@@ -281,6 +280,7 @@ def backtrack(courses, index, assigned_courses, available_times, conflict_detail
 
         # Time shift (step 1)
         elif conflict_resolution_step == 1:
+            # Ensure time shift doesn't cause further conflicts
             shifted_start_time = end_time + 1  # Shift by 1 hour
             shifted_end_time = shifted_start_time + (end_time - start_time)
 
@@ -322,22 +322,21 @@ def backtrack(courses, index, assigned_courses, available_times, conflict_detail
     return backtrack(courses, index + 1, assigned_courses, available_times, conflict_details=conflict_details, conflict_resolution_step=conflict_resolution_step)
 
 
-
 # Greedy Algorithm: Resolves conflicts by selecting the first available room/time slot.
 def resolve_conflicts_greedy(selected_courses_ids):
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        
-        # Ensure the query is properly constructed with placeholders for selected_courses_ids
-        query = "SELECT id, teacher_name, course_title, day_of_week, class_start_time, class_end_time, room FROM course_schedule WHERE id IN ({})".format(
-            ','.join(['?'] * len(selected_courses_ids))  # Ensure the right number of placeholders
-        )
 
-        # Execute the query with the tuple of selected_courses_ids
+        # Prepare and execute the query with placeholders
+        query = """
+            SELECT id, teacher_name, course_title, day_of_week, class_start_time, class_end_time, room 
+            FROM course_schedule 
+            WHERE id IN ({})
+        """.format(','.join(['?'] * len(selected_courses_ids)))
         cursor.execute(query, tuple(selected_courses_ids))
         selected_courses = cursor.fetchall()
 
-    # Map weekdays to numeric values
+    # Map weekdays to numeric values for sorting and comparison
     DAY_MAP = {
         'Monday': 1,
         'Tuesday': 2,
@@ -348,39 +347,38 @@ def resolve_conflicts_greedy(selected_courses_ids):
         'Sunday': 7
     }
 
-    # Sort courses by day_of_week (numeric) and then by start_time
-    selected_courses.sort(key=lambda x: (DAY_MAP[x[3]], x[4]))  # Convert day_of_week to numeric using DAY_MAP
+    # Sort courses by day and start time
+    selected_courses.sort(key=lambda x: (DAY_MAP[x[3]], x[4]))
 
     resolved_courses = []
     unresolved_courses = []
 
-    # Dictionary to track room bookings: {day: {room: [(start_time, end_time), ...]}}
-
+    # Room availability tracking
     room_availability = {day: {room: [] for room in range(1, 6)} for day in range(1, 8)}
 
+    # Iterate over each course to check for conflicts and assign rooms
     for course in selected_courses:
         course_id, teacher_name, course_title, day_of_week, start_time, end_time, room = course
-        day_of_week_numeric = DAY_MAP[day_of_week]  # Convert day_of_week to numeric
-
+        day_numeric = DAY_MAP[day_of_week]
         conflict = False
 
-        # Check if room is available for the given time slot
-        for existing_start, existing_end in room_availability[day_of_week_numeric][room]:
-            if not (end_time <= existing_start or start_time >= existing_end):  # Conflict
+        # Check current room availability for conflicts
+        for existing_start, existing_end in room_availability[day_numeric][room]:
+            if not (end_time <= existing_start or start_time >= existing_end):  # Time overlap conflict
                 conflict = True
                 break
 
         if conflict:
-            # Try to resolve conflict by selecting the first available alternative room
-            found_alternative = False
-            for alt_room in range(1, 6):  # Room 1-5
-                if alt_room != room:  # Skip the same room
-                    for existing_start, existing_end in room_availability[day_of_week_numeric][alt_room]:
+            # Try to find an alternative room
+            alternative_room_found = False
+            for alt_room in room_availability[day_numeric]:
+                if alt_room != room:  # Skip the original room
+                    for existing_start, existing_end in room_availability[day_numeric][alt_room]:
                         if not (end_time <= existing_start or start_time >= existing_end):
                             break
                     else:
-                        # No conflict, assign this course to the alternative room
-                        room_availability[day_of_week_numeric][alt_room].append((start_time, end_time))
+                        # Assign to the alternative room if no conflict is found
+                        room_availability[day_numeric][alt_room].append((start_time, end_time))
                         resolved_courses.append({
                             'id': course_id,
                             'course_title': course_title,
@@ -390,10 +388,11 @@ def resolve_conflicts_greedy(selected_courses_ids):
                             'class_end_time': end_time,
                             'room': alt_room
                         })
-                        found_alternative = True
+                        alternative_room_found = True
                         break
 
-            if not found_alternative:
+            if not alternative_room_found:
+                # Record the course as unresolved if no alternative room is found
                 unresolved_courses.append({
                     'id': course_id,
                     'course_title': course_title,
@@ -405,8 +404,8 @@ def resolve_conflicts_greedy(selected_courses_ids):
                     'conflict': "No available room for this time slot"
                 })
         else:
-            # No conflict, assign the course to the room
-            room_availability[day_of_week_numeric][room].append((start_time, end_time))
+            # No conflict; assign to the original room
+            room_availability[day_numeric][room].append((start_time, end_time))
             resolved_courses.append({
                 'id': course_id,
                 'course_title': course_title,
@@ -417,13 +416,14 @@ def resolve_conflicts_greedy(selected_courses_ids):
                 'room': room
             })
 
+    # Return the result dictionary
     return {
         'resolved_courses': resolved_courses,
         'unresolved_courses': unresolved_courses
     }
-
-
-
+    
+    
+    
 @app.route('/', methods=['GET'])
 def index():
     with get_db_connection() as conn:
