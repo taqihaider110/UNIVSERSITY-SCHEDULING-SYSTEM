@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, session, url_for, flash
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime
+import time
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Required for flash messages
@@ -59,7 +60,7 @@ def check_schedule_conflict(conn, teacher_name, day_of_week, start_time, end_tim
     return conflicts
    
 
-# Resolving Conflicts through Both Greedy and Backtracking
+# Resolve Conflicts through Both Greedy and Backtracking
 @app.route('/resolve_conflicts', methods=['POST'])
 def resolve_conflicts():
     selected_courses_ids = session.get('selected_courses', [])
@@ -71,49 +72,133 @@ def resolve_conflicts():
         return redirect(url_for('course_schedule'))
 
     try:
-        # Greedy algorithm result
+        # Measure execution time for Greedy algorithm
+        start_time = time.perf_counter()
         greedy_result = resolve_conflicts_greedy(selected_courses_ids)
+        greedy_execution_time = time.perf_counter() - start_time
 
-        # Backtracking algorithm result
+        # Measure execution time for Backtracking algorithm
+        start_time = time.perf_counter()
         backtracking_result = resolve_conflicts_backtracking(selected_courses_ids)
+        backtracking_execution_time = time.perf_counter() - start_time
 
-        # Ensure backtracking_result is a dictionary with expected keys
+        # Handle error in backtracking result
         if not isinstance(backtracking_result, dict):
             backtracking_result = {'resolved_courses': [], 'unresolved_courses': [], 'error_message': "Error resolving conflicts using backtracking."}
 
-        # Check if the results are empty and provide alternative messages
-        if not backtracking_result['resolved_courses']:
-            backtracking_result['resolved_message'] = "The backtracking algorithm couldn't resolve any conflicts."
-        else:
-            backtracking_result['resolved_message'] = "Conflicts were resolved successfully by the backtracking algorithm."
+        # Set backtracking messages
+        backtracking_result['resolved_message'] = "Conflicts resolved by backtracking." if backtracking_result['resolved_courses'] else "Backtracking couldn't resolve conflicts."
+        backtracking_result['unresolved_message'] = "No unresolved conflicts after backtracking." if not backtracking_result['unresolved_courses'] else "Unresolved conflicts after backtracking."
 
-        if not backtracking_result['unresolved_courses']:
-            backtracking_result['unresolved_message'] = "No unresolved conflicts were found after applying the backtracking algorithm."
-        else:
-            backtracking_result['unresolved_message'] = "Some unresolved conflicts exist after applying the backtracking algorithm."
-
-        # Check if greedy algorithm results are valid
+        # Handle error in greedy result
         if 'resolved_courses' not in greedy_result:
             greedy_result = {'resolved_courses': [], 'unresolved_courses': [], 'error_message': "Error resolving conflicts using the greedy algorithm."}
 
-        if not greedy_result['resolved_courses']:
-            greedy_result['resolved_message'] = "The greedy algorithm couldn't resolve any conflicts."
-        else:
-            greedy_result['resolved_message'] = "Conflicts were resolved successfully by the greedy algorithm."
+        # Set greedy messages
+        greedy_result['resolved_message'] = "Conflicts resolved by greedy algorithm." if greedy_result['resolved_courses'] else "Greedy couldn't resolve conflicts."
+        greedy_result['unresolved_message'] = "No unresolved conflicts after greedy algorithm." if not greedy_result['unresolved_courses'] else "Unresolved conflicts after greedy algorithm."
 
-        if not greedy_result['unresolved_courses']:
-            greedy_result['unresolved_message'] = "No unresolved conflicts were found after applying the greedy algorithm."
-        else:
-            greedy_result['unresolved_message'] = "Some unresolved conflicts exist after applying the greedy algorithm."
+        # Determine which algorithm performed better
+        best_algorithm = determine_best_algorithm(greedy_result, backtracking_result, greedy_execution_time, backtracking_execution_time)
 
     except Exception as e:
-        app.logger.error(f"Error during conflict resolution: {str(e)}")  # Log the error
+        app.logger.error(f"Error during conflict resolution: {str(e)}")
         flash(f"An error occurred: {str(e)}", "danger")
         return redirect(url_for('course_schedule'))
 
-    # Return both results to the template
-    return render_template('resolve_conflicts.html', greedy_result=greedy_result, backtracking_result=backtracking_result)
+    # Return results to the template, do not pass `comparison` here
+    return render_template('resolve_conflicts.html', 
+                           greedy_result=greedy_result, 
+                           backtracking_result=backtracking_result,
+                           greedy_execution_time=greedy_execution_time,
+                           backtracking_execution_time=backtracking_execution_time,
+                           best_algorithm=best_algorithm)
 
+
+@app.route('/compare_algorithms', methods=['POST'])
+def compare_algorithms():
+    selected_courses_ids = session.get('selected_courses', [])
+
+    if not selected_courses_ids:
+        flash("No courses selected.", "info")
+        return redirect(url_for('course_schedule'))
+
+    try:
+        # Measure execution time for Greedy algorithm
+        start_time = time.perf_counter()
+        greedy_result = resolve_conflicts_greedy(selected_courses_ids)
+        greedy_execution_time = time.perf_counter() - start_time
+
+        # Measure execution time for Backtracking algorithm
+        start_time = time.perf_counter()
+        backtracking_result = resolve_conflicts_backtracking(selected_courses_ids)
+        backtracking_execution_time = time.perf_counter() - start_time
+
+        # Complexity analysis for both algorithms
+        comparison = generate_comparison_data(greedy_result, backtracking_result, greedy_execution_time, backtracking_execution_time)
+
+        # Determine which algorithm is the best
+        best_algorithm = determine_best_algorithm(greedy_result, backtracking_result, greedy_execution_time, backtracking_execution_time)
+
+        return render_template('compare_algorithms.html', 
+                               comparison=comparison, 
+                               best_algorithm=best_algorithm)
+
+    except Exception as e:
+        app.logger.error(f"Error during algorithm comparison: {str(e)}")
+        flash(f"An error occurred: {str(e)}", "danger")
+        return redirect(url_for('course_schedule'))
+
+
+def generate_comparison_data(greedy_result, backtracking_result, greedy_execution_time, backtracking_execution_time):
+    """Generate the comparison data including complexity analysis for both algorithms."""
+    return {
+        "metrics": {
+            "greedy": {
+                "resolved": len(greedy_result['resolved_courses']),
+                "unresolved": len(greedy_result['unresolved_courses']),
+                "execution_time": greedy_execution_time,
+                "best_case": "O(n)",
+                "worst_case": "O(n * m)",
+                "average_case": "O(n log n)"
+            },
+            "backtracking": {
+                "resolved": len(backtracking_result['resolved_courses']),
+                "unresolved": len(backtracking_result['unresolved_courses']),
+                "execution_time": backtracking_execution_time,
+                "best_case": "O(n)",
+                "worst_case": "O(n!)",
+                "average_case": "O(n * m^n)"
+            }
+        },
+        "results": {
+            "greedy": greedy_result,
+            "backtracking": backtracking_result
+        }
+    }
+
+
+
+def determine_best_algorithm(greedy_result, backtracking_result, greedy_execution_time, backtracking_execution_time):
+    """Determine the best algorithm based on resolved courses, unresolved courses, and execution time."""
+    
+    # Compare the number of resolved courses and execution time
+    if len(greedy_result['resolved_courses']) > len(backtracking_result['resolved_courses']) and greedy_execution_time < backtracking_execution_time:
+        return "Greedy Algorithm"
+    elif len(backtracking_result['resolved_courses']) > len(greedy_result['resolved_courses']) and backtracking_execution_time < greedy_execution_time:
+        return "Backtracking Algorithm"
+    elif len(greedy_result['resolved_courses']) == len(backtracking_result['resolved_courses']):
+        # If both algorithms resolved the same number of courses, compare execution times
+        if greedy_execution_time < backtracking_execution_time:
+            return "Greedy Algorithm"
+        elif backtracking_execution_time < greedy_execution_time:
+            return "Backtracking Algorithm"
+        else:
+            return "Both algorithms have similar execution time and resolved the same number of courses."
+    else:
+        return "Both algorithms have similar results"
+
+    
 
 def resolve_conflicts_backtracking(selected_courses_ids):
     with get_db_connection() as conn:
@@ -339,7 +424,7 @@ def resolve_conflicts_greedy(selected_courses_ids):
     }
     
     
-    
+   
 @app.route('/', methods=['GET'])
 def index():
     with get_db_connection() as conn:

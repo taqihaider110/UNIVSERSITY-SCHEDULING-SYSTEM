@@ -54,7 +54,7 @@
                 </div>
             </div>
 
-                        <!-- Backtracking Algorithm Result Section -->
+            <!-- Backtracking Algorithm Result Section -->
             <div class="col-md-6 mb-4">
                 <div class="card shadow-sm rounded">
                     <div class="card-header bg-success text-white">
@@ -106,7 +106,63 @@
                     </div>
                 </div>
             </div>
+        </div>
 
+        <!-- Algorithm Comparison Section -->
+        <div class="row mt-5">
+            <div class="col-md-12">
+                <div class="card shadow-sm rounded">
+                    <div class="card-header bg-dark text-white">
+                        <h3 class="card-title">Algorithm Comparison</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Below is a comparison of the Greedy and Backtracking algorithms based on their results:</p>
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Algorithm</th>
+                                    <th>Resolved Courses</th>
+                                    <th>Unresolved Courses</th>
+                                    <th>Execution Time</th>
+                                    <th>Best Case Complexity</th>
+                                    <th>Worst Case Complexity</th>
+                                    <th>Average Case Complexity</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Greedy Algorithm</td>
+                                    <td>{{ greedy_result['resolved_courses']|length }}</td>
+                                    <td>{{ greedy_result['unresolved_courses']|length }}</td>
+                                    <td>{{ greedy_execution_time }} seconds</td>
+                                    <td>O(n)</td>
+                                    <td>O(n * r * t)</td>
+                                    <td>O(n * r * t)</td>
+                                </tr>
+                                <tr>
+                                    <td>Backtracking Algorithm</td>
+                                    <td>{{ backtracking_result['resolved_courses']|length }}</td>
+                                    <td>{{ backtracking_result['unresolved_courses']|length }}</td>
+                                    <td>{{ backtracking_execution_time }} seconds</td>
+                                    <td>O(n)</td>
+                                    <td>O(m^n)</td>
+                                    <td>O(m^n)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="mt-4">
+                            <h5 class="text-muted">Where:</h5>
+                            <ul>
+                                <li><strong>n</strong> = number of courses</li>
+                                <li><strong>r</strong> = number of rooms</li>
+                                <li><strong>t</strong> = number of timeslots</li>
+                                <li><strong>m</strong> = number of available timeslots</li>
+                            </ul>
+                        </div>
+                        <h5 class="text-center text-info mt-3">Best Algorithm: <strong>{{ best_algorithm }}</strong></h5>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="text-center mt-5">
