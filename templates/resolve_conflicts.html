@@ -54,14 +54,14 @@
                 </div>
             </div>
 
-            <!-- Backtracking Algorithm Result Section -->
+                        <!-- Backtracking Algorithm Result Section -->
             <div class="col-md-6 mb-4">
                 <div class="card shadow-sm rounded">
                     <div class="card-header bg-success text-white">
                         <h3 class="card-title">Backtracking Algorithm Result</h3>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted">The Backtracking Algorithm assigns time slots recursively and backtracks in case of conflicts. Below are the results:</p>
+                        <p class="text-muted">The Backtracking Algorithm attempts to resolve scheduling conflicts by systematically assigning courses to available time slots and rooms. It recursively explores all possible combinations, backtracking when conflicts arise. Below are the results:</p>
 
                         {% if backtracking_result %}
                             {% if backtracking_result['resolved_courses'] %}
@@ -106,6 +106,7 @@
                     </div>
                 </div>
             </div>
+
         </div>
 
         <div class="text-center mt-5">
